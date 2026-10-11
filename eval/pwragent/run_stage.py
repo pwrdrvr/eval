@@ -111,8 +111,14 @@ def execute(args):
             rt.close()
         write(record_path,row);ledger.export(LOCAL/'stage-ledger.json')
         print(json.dumps({'event':'result','run_id':run_id,'status':row['agent_status'],'grade':row['grade'],'cost':row.get('accounting'),'ledger_remaining_usd':ledger.snapshot()['remaining_usd']}),flush=True)
-        if row['success'] is None or uncertain:
+        if row['success'] is None or (uncertain and (not row.get('accounting',{}).get('rows') or row['accounting'].get('unpriced_models'))):
             print(json.dumps({'event':'pause_invalid_or_uncertain','run_id':run_id}),flush=True);break
+        if uncertain:
+            # This is already charged at the ENTIRE reservation, rather than
+            # released at the partial observed cost. The global ledger can
+            # safely admit remaining fixed cells without assuming missing
+            # usage is zero. Unknown model/rate or infrastructure still stops.
+            print(json.dumps({'event':'quarantined_full_reservation','run_id':run_id,'charged_usd':reserve,'remaining_usd':ledger.snapshot()['remaining_usd']}),flush=True)
 
 
 def grade_deep(rt,source):

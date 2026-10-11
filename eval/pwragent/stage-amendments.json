@@ -18,6 +18,11 @@
       "time": "2026-10-11",
       "reason": "First main task Debian bookworm cannot execute Ubuntu-built managed Codex GLIBC_2.39. No turn dispatched and zero spend settled. Isolate original Ubuntu glibc and relocate ELF interpreter/RPATH for managed binary siblings, hash all relocated files. Preserve original task base and verifier. Apply identical portable runtime to every main task/model/flag. Retain zero-dispatch invalid attempt and explicitly allow one named infrastructure retry with unique ID.",
       "task_selection_order_model_prompt_changes": false
+    },
+    {
+      "time": "2026-10-11",
+      "reason": "Cython Astra ON hit fixed inclusive750k-token stop. Original grade0 retained. All usage model rates known, but cancellation terminal notification missing; entire47USD reservation stays charged as uncertain. Remaining fixed cells can continue only under global250USD ledger after that full quarantine; no release, no model retry, no task/order/prompt/limit changes. Unknown rates or infrastructure still stop.",
+      "task_selection_order_model_prompt_changes": false
     }
   ]
 }
