@@ -38,6 +38,7 @@ Run from this checkout after preparing pinned payloads/task packages:
 ```sh
 python3 -m unittest discover -s eval/pwragent -p 'test_*.py'
 python3 eval/pwragent/run_stage.py
+python3 eval/pwragent/reconcile_records.py  # offline, after dispatch process stops
 python3 eval/pwragent/report.py --paused
 ```
 
@@ -73,3 +74,7 @@ Small samples cannot establish population-level effects. An enabled flag with
 zero interceptions is smoke evidence, not evidence of compression efficacy.
 See `PROVENANCE.md` for instruction-protection fixes and historical auxiliary
 work; standalone Codex Token Miser provenance remains unconfirmed.
+
+Validation on the current checkout and untouched base e837a70: existing Node
+suite33/40 passes in both, with the same seven historical report/skill failures.
+The separate evaluator suite passes8/8. Protected instruction cases pass7/7.
