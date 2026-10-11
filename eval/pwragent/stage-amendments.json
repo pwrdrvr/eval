@@ -30,6 +30,12 @@
       "orchestration_reserve_usd": 65,
       "stage_ceiling_usd": 250,
       "task_selection_order_model_prompt_changes": false
+    },
+    {
+      "time": "2026-10-11",
+      "reason": "Added exact eval-only Jarvis20 selected-turn overhead. Initial short-card1.319672USD, conservative2.605102USD. Hold8.605102USD includes5partial/futuretail,0.5unassignedhelper upper,0.5closeout. Refreshed matching audit turn using selected provider token_usage_record only and attributed20nativeLuna helpers via readonly TokenMiserStore; no unrelated/historical root usage charged.",
+      "stage_ceiling_usd": 250,
+      "task_selection_order_model_prompt_changes": false
     }
   ]
 }

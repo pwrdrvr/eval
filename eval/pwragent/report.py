@@ -18,6 +18,8 @@ def interval(values,seed=20261011):
 def build(paused=False):
     records=[json.loads(f.read_text()) for f in sorted((LOCAL/'records').glob('*.json'))]
     summary={'schema_version':1,'stage':'paused pending explicit review' if paused else 'collecting within bounded stage','preregistration':json.loads((ROOT/'eval/pwragent/preregistered-stage.json').read_text()),'ledger':json.loads((LOCAL/'stage-ledger.json').read_text()),'models':{},'records':records}
+    summary['executed_suites']=sorted({r['task_suite'] for r in records if r.get('dispatch_intent_at')})
+    summary['unexecuted_cells']=[c for index,c in enumerate(summary['preregistration']['order']) if not any(r['index']==index and r.get('dispatch_intent_at') for r in records)]
     for model in summary['preregistration']['models']:
         rows=[r for r in records if r['cell']['model']==model]
         arms={}
@@ -59,7 +61,7 @@ def build(paused=False):
     for model,s in summary['models'].items():
         a=s['arms'];p=s['paired'];delta=p['score_delta_on_minus_off'];cost=p['mean_cost_delta_on_minus_off_usd']
         md.append(f"| {model} | {p['off_passes']}/{p['n']} | {p['on_passes']}/{p['n']} | {p['n']} | {delta*100:.1f} pp | ${cost:.4f} |" if delta is not None and cost is not None else f"| {model} | {p['off_passes']}/{p['n']} | {p['on_passes']}/{p['n']} | {p['n']} | unresolved | unresolved |")
-    md.extend(['','Costs are API-equivalent estimates for Codex subscription execution, not verified API-credit invoices. The ledger uses a higher conservative projection for admission and keeps unknown spend reserved. Reasoning is included in output; native helper and retrieval rows are retained.','', 'This uses own matched pairs on available Terminal-Bench 2.0 and DeepSWE packages in native Linux arm64 containers, not SWE-bench Verified or the published Kimi/amd64 FrontierHarness leaderboard configuration. Sample selection, order, hashes, exact commits, pricing snapshot, failures and confidence intervals are in interim.json. A small sample does not establish population-level improvement.','', 'Historical GPT-5.6-Sol host pilots are auxiliary, non-efficacy-grade evidence. They are not pooled with these requested-model results.','', 'Budget ledger: '+json.dumps({k:v for k,v in summary['ledger'].items() if k!='entries'})])
+    md.extend(['','Costs are API-equivalent estimates for Codex subscription execution, not verified API-credit invoices. The ledger uses a higher conservative projection for admission and keeps unknown spend reserved. Reasoning is included in output; native helper and retrieval rows are retained.','', 'This uses own matched pairs in native Linux arm64 containers, not SWE-bench Verified or the published Kimi/amd64 FrontierHarness leaderboard configuration. The preregistered pool contains Terminal-Bench 2.0 and DeepSWE; executed suites and unexecuted cells are listed explicitly in interim.json. Sample selection, order, hashes, exact commits, pricing snapshot, failures and confidence intervals are in interim.json. A small sample does not establish population-level improvement.','', 'Historical GPT-5.6-Sol host pilots are auxiliary, non-efficacy-grade evidence. They are not pooled with these requested-model results.','', 'Budget ledger: '+json.dumps({k:v for k,v in summary['ledger'].items() if k!='entries'})])
     (dest/'interim.md').write_text('\n'.join(md)+'\n')
     print(json.dumps({'report':str(dest/'interim.json'),'models':summary['models'],'ledger':{k:v for k,v in summary['ledger'].items() if k!='entries'}},indent=2))
 
