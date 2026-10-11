@@ -15,9 +15,12 @@ def interval(values,seed=20261011):
     return [samples[249],samples[9749]]
 
 
-def build(paused=False):
+def build(paused=False,protocol=None):
+    pr=json.loads(Path(protocol or ROOT/'eval/pwragent/preregistered-stage.json').read_text())
+    cohort=pr.get('cohort_id','stage1')
     records=[json.loads(f.read_text()) for f in sorted((LOCAL/'records').glob('*.json'))]
-    summary={'schema_version':1,'stage':'paused pending explicit review' if paused else 'collecting within bounded stage','preregistration':json.loads((ROOT/'eval/pwragent/preregistered-stage.json').read_text()),'ledger':json.loads((LOCAL/'stage-ledger.json').read_text()),'models':{},'records':records}
+    records=[r for r in records if r.get('cohort_id','stage1')==cohort]
+    summary={'schema_version':1,'cohort_id':cohort,'stage':'paused pending explicit review' if paused else 'collecting within bounded stage','preregistration':pr,'ledger':json.loads((LOCAL/'stage-ledger.json').read_text()),'models':{},'records':records}
     summary['executed_suites']=sorted({r['task_suite'] for r in records if r.get('dispatch_intent_at')})
     summary['unexecuted_cells']=[c for index,c in enumerate(summary['preregistration']['order']) if not any(r['index']==index and r.get('dispatch_intent_at') for r in records)]
     summary['overhead']={name:json.loads((LOCAL/name).read_text()) for name in ['overhead-snapshot.json','jarvis-overhead-snapshot.json'] if (LOCAL/name).exists()}
@@ -71,10 +74,10 @@ def build(paused=False):
                 paired['reported_cost_per_resolved_'+label+'_usd']=lower/passed if passed and len(observed_pairs)==len(pairs) else None
                 paired['cost_per_resolved_'+label+'_possible_interval_usd']=[lower/passed,upper/passed] if passed and len(observed_pairs)==len(pairs) else None
         summary['models'][model]={'arms':arms,'paired':paired}
-    dest=LOCAL/'report';dest.mkdir(exist_ok=True)
+    dest=LOCAL/('report' if cohort=='stage1' else 'report-'+cohort);dest.mkdir(exist_ok=True)
     (dest/'interim.json').write_text(json.dumps(summary,indent=2)+'\n')
     (dest/'records.jsonl').write_text(''.join(json.dumps(r,sort_keys=True)+'\n' for r in records))
-    md=['# PwrAgent Token Miser interim evaluation','', 'Further paid/subscription eval model work is paused pending explicit user review approval.' if paused else 'Collection is in progress under the inclusive $250 stage ceiling.','', '| Model | OFF passes | ON passes | Valid score pairs | ON−OFF score | Reported ON/OFF cost |', '|---|---:|---:|---:|---:|---:|']
+    md=['# PwrAgent Token Miser interim evaluation — '+cohort,'', 'Further paid/subscription eval model work is paused pending explicit user review approval.' if paused else f"Collection is in progress under the inclusive ${pr['stage_ceiling_usd']} cumulative ceiling.",'', '| Model | OFF passes | ON passes | Valid score pairs | ON−OFF score | Reported ON/OFF cost |', '|---|---:|---:|---:|---:|---:|']
     for model,s in summary['models'].items():
         a=s['arms'];p=s['paired'];delta=p['score_delta_on_minus_off'];cost=p.get('reported_cost_change_fraction')
         md.append(f"| {model} | {p['off_passes']}/{p['n']} | {p['on_passes']}/{p['n']} | {p['n']} | {delta*100:.1f} pp | {cost*100:+.2f}% |" if delta is not None and cost is not None else f"| {model} | {p['off_passes']}/{p['n']} | {p['on_passes']}/{p['n']} | {p['n']} | unresolved | unresolved |")
@@ -85,4 +88,4 @@ def build(paused=False):
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--paused',action='store_true');build(p.parse_args().paused)
+    p=argparse.ArgumentParser();p.add_argument('--paused',action='store_true');p.add_argument('--protocol',type=Path);args=p.parse_args();build(args.paused,args.protocol)

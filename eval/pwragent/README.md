@@ -13,6 +13,13 @@ verifiers stay absent during agent execution. DeepSWE grades exported patches
 in pristine containers. Every admitted attempt, including infrastructure and
 model failures, is retained. No benchmark solution or task patch is published.
 
+The separately approved harder cohort is `preregistered-hard-httpx.json`: only
+four HTTPX multipart task cells, both exact models OFF/ON,2million inclusive
+tokens, cumulative$500 ceiling including all earlier charges/holds. Its protocol
+hash alone is authorized through the review gate; the original stage remains
+paused. The runner always stops after those four cells and restores the pause.
+Reports filter by cohort, so this amendment is not silently pooled with stage1.
+
 ## Execution and evidence
 
 `runtime-pins.json` records the production application source, eval driver PR,
@@ -33,6 +40,22 @@ The pilot used unrelocated binaries on Ubuntu24; each ON/OFF pair shares its
 runtime. Readonly original Codex auth is mounted as uid501, with no copy or image
 layer credential. The local Docker socket is never mounted into a task.
 
+Review found the original6062 Playwright launch silently added `--no-sandbox`.
+The prior sandbox claim was incorrect and is retained as a stage1 limitation.
+The harder cohort pins driver2c7d84b with explicit `chromiumSandbox:true` and
+uses the [official Playwright1.63 seccomp profile](https://github.com/microsoft/playwright/blob/v1.63.0/utils/docker/seccomp_profile.json)
+for scoped clone/setns/unshare namespace permissions. It uses no SYS_ADMIN,
+unconfined policy or root Electron. Actual native HTTPX zero-turn preflights
+passed; driver DEBUG argv and live process UID/seccomp evidence are retained.
+
+Admission is subscription-only: the approved auth must be ChatGPT account auth
+with no API-key value, and the container rejects API-key or endpoint override
+environment variables before launching the agent. Actual account/read receipts
+identified ChatGPT Pro for every prior task. Managed provider source selects
+chatgpt.com/backend-api/codex in this mode; parent App Server replies resolve
+default tier, helper usage resolves standard, and fast mode is disabled.
+These prove runtime route/settings, not an upstream billing invoice.
+
 Run from this checkout after preparing pinned payloads/task packages:
 
 ```sh
@@ -40,6 +63,9 @@ python3 -m unittest discover -s eval/pwragent -p 'test_*.py'
 python3 eval/pwragent/run_stage.py
 python3 eval/pwragent/reconcile_records.py  # offline, after dispatch process stops
 python3 eval/pwragent/report.py --paused
+# The exact separately approved protocol; the gate rejects any other hash:
+python3 eval/pwragent/run_stage.py --protocol eval/pwragent/preregistered-hard-httpx.json
+python3 eval/pwragent/report.py --protocol eval/pwragent/preregistered-hard-httpx.json --paused
 ```
 
 `--limit N` admits only the first N preregistered cells. `--retry-infra N` is an
@@ -84,4 +110,4 @@ work; standalone Codex Token Miser provenance remains unconfirmed.
 
 Validation on the current checkout and untouched base e837a70: existing Node
 suite33/40 passes in both, with the same seven historical report/skill failures.
-The separate evaluator suite passes9/9. Protected instruction cases pass7/7.
+The separate evaluator suite passes10/10. Protected instruction cases pass7/7.

@@ -29,12 +29,13 @@ def mount(source, target, readonly=False):
 
 
 class Runtime:
-    def __init__(self, run_id, image, input_data, auth='/Users/huntharo/.codex/auth.json', portable=False):
+    def __init__(self, run_id, image, input_data, auth='/Users/huntharo/.codex/auth.json', portable=False, seccomp=None):
         self.name = 'fh-'+run_id
         self.root = LOCAL/'runs'/run_id
         self.image = image
         self.input = input_data
         self.portable = portable
+        self.seccomp = seccomp
         if self.root.exists():
             raise ValueError('existing runtime evidence: reconcile, never overwrite')
         self.root.mkdir(parents=True)
@@ -44,6 +45,9 @@ class Runtime:
         self.auth = auth
 
     def start(self):
+        auth=json.loads(Path(self.auth).read_text())
+        if auth.get('auth_mode')!='chatgpt' or auth.get('OPENAI_API_KEY') or not (auth.get('tokens') or {}).get('access_token'):
+            raise RuntimeError('Subscription-only admission: approved ChatGPT auth required; no API-key fallback')
         mounts = []
         for src,dst,ro in [
             (self.root/'profile','/eval/profile',False),
@@ -58,7 +62,13 @@ class Runtime:
             mounts.extend(mount(src,dst,ro))
         if self.portable:
             mounts.extend(mount(LOCAL/'cache/portable/glibc','/opt/pwragent-glibc',True))
-        docker('run','-d','--name',self.name,'--platform','linux/arm64','--user','0:0','--cpus','2','--memory','6g','--shm-size','512m','--entrypoint','/usr/bin/tini',*mounts,self.image,'--','sleep','infinity')
+        security=['--security-opt','seccomp='+str(Path(self.seccomp).resolve())] if self.seccomp else []
+        docker('run','-d','--name',self.name,'--platform','linux/arm64','--user','0:0','--cpus','2','--memory','6g','--shm-size','512m','--entrypoint','/usr/bin/tini',*security,*mounts,self.image,'--','sleep','infinity')
+        guard=docker('exec',self.name,'python3','-c','import os,json; print(json.dumps({k:bool(os.environ.get(k)) for k in ["OPENAI_API_KEY","CODEX_API_KEY","AZURE_OPENAI_API_KEY","OPENAI_BASE_URL"]}))')
+        flags=json.loads(guard.stdout)
+        (self.root/'auth-env-guard.json').write_text(json.dumps({'api_key_presence_booleans':flags,'auth_mode':'chatgpt','readonly_auth_mount':True},indent=2)+'\n')
+        if any(flags.values()):
+            raise RuntimeError('Subscription-only admission: API credential or endpoint override in runtime environment')
         # Host uid retains auth.json's 0600 protection and read-only mount;
         # using uid1000 would require widening permissions or a credential copy.
         uid,gid = os.getuid(),os.getgid()

@@ -17,16 +17,26 @@ def write(path, value):
 
 
 def execute(args):
+    protocol=Path(getattr(args,'protocol',None) or PREREG).resolve()
+    protocol_hash=hashlib.sha256(protocol.read_bytes()).hexdigest() if protocol.exists() else None
     if (LOCAL/'PAUSED_FOR_REVIEW.json').exists():
-        raise RuntimeError('Stage paused for explicit user review; no paid/subscription dispatch authorized')
-    pr=json.loads(PREREG.read_text())
+        pause=json.loads((LOCAL/'PAUSED_FOR_REVIEW.json').read_text())
+        if not protocol_hash or pause.get('authorized_protocol_sha256')!=protocol_hash:
+            raise RuntimeError('Stage paused for explicit user review; no paid/subscription dispatch authorized')
+    pr=json.loads(protocol.read_text())
+    cohort=pr.get('cohort_id','stage1')
     ledger=Ledger(LOCAL/'stage-ledger.sqlite',pr['stage_ceiling_usd'])
     tasks={t['id']:t for t in pr['tasks']}
     records=LOCAL/'records';records.mkdir(exist_ok=True)
     for index,cell in enumerate(pr['order']):
+        if pr.get('driver_directory') and str((LOCAL/'cache/current-driver').resolve())!=pr['driver_directory']:
+            raise RuntimeError('Frozen driver directory changed within cohort')
+        for file,expected in pr.get('driver_file_sha256',{}).items():
+            if hashlib.sha256((LOCAL/'cache/current-driver'/file).read_bytes()).hexdigest()!=expected:
+                raise RuntimeError('Frozen driver contents changed within cohort')
         if args.limit and index>=args.limit:break
         label='sol' if cell['model']=='gpt-6.1-sol' else 'astra'
-        run_id=f"stage1-{index+1:02}-{cell['task']}-{label}-{'on' if cell['token_miser'] else 'off'}"
+        run_id=f"{cohort}-{index+1:02}-{cell['task']}-{label}-{'on' if cell['token_miser'] else 'off'}"
         record_path=records/(run_id+'.json')
         if record_path.exists():
             prior=json.loads(record_path.read_text())
@@ -57,7 +67,7 @@ def execute(args):
             build_task(source,'fh-pwragent:8655446',image_name)
         image=json.loads(build_json.read_text())
         reserve=pr['reservation_usd'][cell['model']]
-        if index<4:
+        if cohort=='stage1' and index<4:
             pilot_used=sum(e['charged_micros']+e['reserved_micros'] for e in ledger.snapshot()['entries'] if e['run_id'].startswith('stage1-'))/1e6
             if pilot_used+reserve>pr['pilot_ceiling_usd']:
                 print(json.dumps({'event':'pause_pilot_admission','used':pilot_used,'needed':reserve}),flush=True);break
@@ -68,10 +78,13 @@ def execute(args):
         meta=task['task_metadata']
         timeout=min(float(meta.get('agent',{}).get('timeout_sec',900)),1200)
         prompt=(source/'instruction.md').read_text()+"\n\nExecution constraints: Work only on this task. Do not launch subagents or other threads. Do not access external solutions, task verifier packages, unrelated host data, or benchmark artifacts. Passwordless sudo is available for task dependencies. Commit the task changes before finishing.\n"
-        inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],timeoutMs=round(timeout*1000),runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',maxObservedCostUsd=pr['observed_cost_stops_usd'][cell['model']],maxObservedTokens=750000)
-        portable=index>=4
-        rt=Runtime(run_id,image['image'],inp,portable=portable)
-        row=dict(schema_version=1,run_id=run_id,index=index,cell=cell,task_suite=task['suite'],source_commit=task['source_commit'],task_package_hash=hashlib.sha256(json.dumps(task['hashes'],sort_keys=True).encode()).hexdigest(),preregistration_sha256=hashlib.sha256(PREREG.read_bytes()).hexdigest(),prompt_sha256=hashlib.sha256(prompt.encode()).hexdigest(),image=image,driver_source=str((LOCAL/'cache/current-driver').resolve().name),runtime=json.loads((LOCAL/'runtime.json').read_text()),reservation_usd=reserve)
+        inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],timeoutMs=round(timeout*1000),runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',maxObservedCostUsd=pr['observed_cost_stops_usd'][cell['model']],maxObservedTokens=pr.get('inclusive_token_stop',750000))
+        portable=cohort!='stage1' or index>=4
+        seccomp=pr.get('seccomp_profile')
+        if seccomp and hashlib.sha256(Path(seccomp).read_bytes()).hexdigest()!=pr['seccomp_profile_sha256']:
+            raise RuntimeError('Frozen sandbox namespace profile changed')
+        rt=Runtime(run_id,image['image'],inp,portable=portable,seccomp=seccomp)
+        row=dict(schema_version=1,cohort_id=cohort,protocol_path=str(protocol),run_id=run_id,index=index,cell=cell,task_suite=task['suite'],source_commit=task['source_commit'],task_package_hash=hashlib.sha256(json.dumps(task['hashes'],sort_keys=True).encode()).hexdigest(),preregistration_sha256=protocol_hash,prompt_sha256=hashlib.sha256(prompt.encode()).hexdigest(),image=image,driver_source=str((LOCAL/'cache/current-driver').resolve().name),runtime=json.loads((LOCAL/'runtime.json').read_text()),reservation_usd=reserve)
         write(record_path,row)
         row['runtime']=json.loads((LOCAL/('runtime-portable.json' if portable else 'runtime.json')).read_text())
         row['runtime_portability']='isolated glibc 2.39 ELF interpreter/RPATH relocation; task base unchanged' if portable else 'original managed ELF'
@@ -121,6 +134,8 @@ def execute(args):
             # safely admit remaining fixed cells without assuming missing
             # usage is zero. Unknown model/rate or infrastructure still stops.
             print(json.dumps({'event':'quarantined_full_reservation','run_id':run_id,'charged_usd':reserve,'remaining_usd':ledger.snapshot()['remaining_usd']}),flush=True)
+    if cohort!='stage1':
+        write(LOCAL/'PAUSED_FOR_REVIEW.json',{'reason':'Authorized bounded cohort returned; further paid/subscription work requires explicit review','completed_cohort':cohort})
 
 
 def grade_deep(rt,source):
@@ -147,4 +162,4 @@ def grade_deep(rt,source):
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--limit',type=int);p.add_argument('--retry-infra',type=int);args=p.parse_args();execute(args)
+    p=argparse.ArgumentParser();p.add_argument('--limit',type=int);p.add_argument('--retry-infra',type=int);p.add_argument('--protocol',type=Path);args=p.parse_args();execute(args)
