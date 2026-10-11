@@ -31,10 +31,12 @@ def build(paused=False,protocol=None):
     pr=json.loads(Path(protocol or ROOT/'eval/pwragent/preregistered-stage.json').read_text())
     cohort=pr.get('cohort_id','stage1')
     records=[json.loads(f.read_text()) for f in sorted((LOCAL/'records').glob('*.json'))]
-    records=[r for r in records if r.get('cohort_id','stage1')==cohort]
+    selected_cohorts=pr.get('record_cohort_ids',[cohort])
+    records=[r for r in records if r.get('cohort_id','stage1') in selected_cohorts]
     summary={'schema_version':1,'cohort_id':cohort,'stage':'paused pending explicit review' if paused else 'collecting within bounded stage','preregistration':pr,'ledger':json.loads((LOCAL/'stage-ledger.json').read_text()),'models':{},'records':records}
     summary['executed_suites']=sorted({r['task_suite'] for r in records if r.get('dispatch_intent_at')})
-    summary['unexecuted_cells']=[c for index,c in enumerate(summary['preregistration']['order']) if not any(r['index']==index and r.get('dispatch_intent_at') for r in records)]
+    summary['unexecuted_cells']=[c for c in summary['preregistration']['order'] if not any(r['cell']==c and r.get('dispatch_intent_at') for r in records)]
+    summary['record_cohort_ids']=selected_cohorts
     summary['overhead']={name:json.loads((LOCAL/name).read_text()) for name in ['overhead-snapshot.json','jarvis-overhead-snapshot.json'] if (LOCAL/name).exists()}
     summary['raw_usage_totals']={k:sum(line.get(k,0) for r in records for line in r.get('accounting',{}).get('rows',[])) for k in ['input_tokens','uncached_input_tokens','cached_input_tokens','cache_write_tokens','output_tokens','reasoning_tokens']}
     summary['reported_task_cost_usd']=sum(r.get('accounting',{}).get('estimated_cost_usd',0) or 0 for r in records)
