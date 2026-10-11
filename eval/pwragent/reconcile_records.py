@@ -2,6 +2,7 @@
 import hashlib
 import json
 import subprocess
+from pathlib import Path
 from accounting import account
 from runtime import LOCAL
 
@@ -17,6 +18,14 @@ def reconcile():
         output=LOCAL/'runs'/row['run_id']/'output'
         result=json.loads((output/'result.json').read_text())
         events=[json.loads(l) for l in (output/'rollout.jsonl').read_text().splitlines() if l.strip()]
+        recovery=row.get('offline_pricing_recovery')
+        if recovery:
+            artifact=Path(recovery['artifact']).resolve()
+            if not artifact.is_relative_to(output.resolve()) or hashlib.sha256(artifact.read_bytes()).hexdigest()!=recovery['artifact_sha256']:
+                raise RuntimeError('Recovered pricing artifact provenance changed')
+            recovered=json.loads(artifact.read_text())
+            result={**result,'pricing':recovered['pricing']}
+            events=recovered['selected_usage_notifications']
         updated=account(result,events)
         if abs(updated['conservative_budget_usd']-row['accounting']['conservative_budget_usd'])>0.000001:
             raise RuntimeError('Repricing changed conservative spend: ledger review required')

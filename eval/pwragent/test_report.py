@@ -1,5 +1,5 @@
 import unittest
-from report import verifier_scores
+from report import cost_direction,verifier_scores
 
 
 class VerifierScoreTests(unittest.TestCase):
@@ -21,6 +21,13 @@ class VerifierScoreTests(unittest.TestCase):
         self.assertEqual(scores['partial']['mean'],1.0)
         self.assertEqual(scores['noncompleted_agent_attempts'],1)
         self.assertFalse(row['success'])
+
+    def test_missing_usage_can_still_bound_direction_but_not_when_zero_is_possible(self):
+        self.assertEqual(cost_direction([1,42]),'higher')
+        self.assertEqual(cost_direction([-42,-1]),'lower')
+        self.assertEqual(cost_direction([-1,42]),'unresolved')
+        self.assertEqual(cost_direction([0,42]),'unresolved')
+        self.assertEqual(cost_direction([0,0]),'equal_observed')
 
 
 if __name__=='__main__':unittest.main()

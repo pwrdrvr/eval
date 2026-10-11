@@ -27,6 +27,13 @@ def verifier_scores(records):
     return output
 
 
+def cost_direction(bounds):
+    if bounds[0]>0:return 'higher'
+    if bounds[1]<0:return 'lower'
+    if bounds==[0,0]:return 'equal_observed'
+    return 'unresolved'
+
+
 def build(paused=False,protocol=None):
     pr=json.loads(Path(protocol or ROOT/'eval/pwragent/preregistered-stage.json').read_text())
     cohort=pr.get('cohort_id','stage1')
@@ -66,6 +73,8 @@ def build(paused=False,protocol=None):
         cost_diffs=[on-off for off,on in cost_pairs]
         paired=dict(n=len(pairs),score_delta_on_minus_off=statistics.mean(diffs) if diffs else None,score_delta_bootstrap_95_ci=interval(diffs),on_only_pass=wins,off_only_pass=losses,exact_mcnemar_p=pvalue,zero_discordance_one_sided_95_upper_probability=(1-.05**(1/len(pairs))) if pairs and not discord else None,cost_pairs=len(cost_pairs),mean_cost_delta_on_minus_off_usd=statistics.mean(cost_diffs) if cost_diffs else None,cost_delta_bootstrap_95_ci_usd=interval(cost_diffs),aggregate_cost_change_fraction=(sum(b for a,b in cost_pairs)/sum(a for a,b in cost_pairs)-1) if cost_pairs and sum(a for a,b in cost_pairs)>0 else None)
         paired.update(off_passes=sum(off['success'] for _,off,on in pairs),on_passes=sum(on['success'] for _,off,on in pairs))
+        without_ipc=[(off,on) for _,off,on in pairs if not any(r.get('failure_classification',{}).get('infrastructure_trigger') for r in [off,on])]
+        paired['evaluator_interruptions']={'affected_pairs':len(pairs)-len(without_ipc),'pairs_without_identified_evaluator_interruption':len(without_ipc),'off_passes_without_interruption':sum(off['success'] for off,on in without_ipc),'on_passes_without_interruption':sum(on['success'] for off,on in without_ipc),'limitation':'Primary completion-gated score retains every failure. This secondary diagnostic separates identified evaluator IPC interruptions; it is not a replacement score or an unbiased missing-outcome correction.'}
         paired['verifier_numeric_diagnostics']={}
         for key in ['f2p','p2p','partial']:
             values=[]
@@ -90,6 +99,7 @@ def build(paused=False,protocol=None):
             upper_off=sum(off['accounting']['estimated_cost_usd'] if off['accounting']['usage_complete'] else off['reservation_usd'] for off,on in observed_pairs)
             upper_on=sum(on['accounting']['estimated_cost_usd'] if on['accounting']['usage_complete'] else on['reservation_usd'] for off,on in observed_pairs)
             paired.update(all_pairs_reported_cost_n=len(observed_pairs),reported_cost_off_usd=observed_off,reported_cost_on_usd=observed_on,reported_cost_change_fraction=observed_on/observed_off-1 if observed_off else None,uncertain_cost_pairs=sum(not(off['accounting']['usage_complete'] and on['accounting']['usage_complete']) for off,on in observed_pairs),possible_total_cost_delta_interval_usd=[observed_on-upper_off,upper_on-observed_off],reported_cost_limitation='Provider-reported snapshot estimate; cancelled in-flight usage can be missing. Full unknown reservations remain charged. No API billing invoice.')
+            paired['sample_cost_direction_with_missing_usage_bounds']=cost_direction(paired['possible_total_cost_delta_interval_usd'])
             paired['reported_cost_delta_bootstrap_95_ci_usd']=interval([on['accounting']['estimated_cost_usd']-off['accounting']['estimated_cost_usd'] for off,on in observed_pairs])
             paired['finance_pairs_with_invalid_grade']=sum(off.get('success') is None or on.get('success') is None for off,on in observed_pairs)
             for label,lower,upper in [('off',observed_off,upper_off),('on',observed_on,upper_on)]:
@@ -112,7 +122,7 @@ def build(paused=False,protocol=None):
                 values=[f"{scores[k]['mean']*100:.2f}%" if scores[k]['mean'] is not None else 'unavailable' for k in ['f2p','p2p','partial']]
                 md.append('| '+model+' | '+label+' | '+' | '.join(values)+' |')
     incomplete=any(r.get('dispatch_intent_at') and not r.get('accounting',{}).get('usage_complete') for r in records)
-    cost_note='Missing cancellation usage means true cost direction remains unresolved; full unknown reservations remain charged.' if incomplete else 'All dispatched cells in this cohort have complete reported usage. Cost direction describes these observed pairs, not a population effect.'
+    cost_note='Missing cancellation usage requires the reported cost bounds; direction is unresolved when they include zero. Full unknown reservations remain charged.' if incomplete else 'All dispatched cells in this cohort have complete reported usage. Cost direction describes these observed pairs, not a population effect.'
     md.extend(['', 'Cost percentages use all financial pairs, including infrastructure-invalid grades and cancelled runs when present. Score uses valid graded pairs. '+cost_note+' See interim.json for both paired counts, bootstrap intervals, McNemar and finite-sample discordance bounds. A zero-width empirical bootstrap is not proof of equality.'])
     md.extend(['','Costs are API-equivalent estimates for Codex subscription execution, not verified API-credit invoices. The ledger uses a higher conservative projection for admission and keeps unknown spend reserved. Reasoning is included in output; native helper and retrieval rows are retained.','', 'This uses own matched pairs in native Linux arm64 containers, not SWE-bench Verified or the published Kimi/amd64 FrontierHarness leaderboard configuration. The preregistered pool contains Terminal-Bench 2.0 and DeepSWE; executed suites and unexecuted cells are listed explicitly in interim.json. Sample selection, order, hashes, exact commits, pricing snapshot, failures and confidence intervals are in interim.json. A small sample does not establish population-level improvement.','', 'Historical GPT-5.6-Sol host pilots are auxiliary, non-efficacy-grade evidence. They are not pooled with these requested-model results.','', 'Budget ledger: '+json.dumps({k:v for k,v in summary['ledger'].items() if k!='entries'})])
     (dest/'interim.md').write_text('\n'.join(md)+'\n')
