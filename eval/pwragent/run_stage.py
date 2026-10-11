@@ -1,0 +1,103 @@
+"""Execute preregistered serial paired cells, retaining every admitted attempt."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import time
+from accounting import account
+from build_task import build_task
+from ledger import Ledger
+from runtime import LOCAL, ROOT, Runtime
+
+PREREG=ROOT/'eval/pwragent/preregistered-stage.json'
+
+
+def write(path, value):
+    Path(path).write_text(json.dumps(value,indent=2)+'\n')
+
+
+def execute(args):
+    pr=json.loads(PREREG.read_text())
+    ledger=Ledger(LOCAL/'stage-ledger.sqlite',pr['stage_ceiling_usd'])
+    tasks={t['id']:t for t in pr['tasks']}
+    records=LOCAL/'records';records.mkdir(exist_ok=True)
+    for index,cell in enumerate(pr['order']):
+        if args.limit and index>=args.limit:break
+        label='sol' if cell['model']=='gpt-6.1-sol' else 'astra'
+        run_id=f"stage1-{index+1:02}-{cell['task']}-{label}-{'on' if cell['token_miser'] else 'off'}"
+        record_path=records/(run_id+'.json')
+        if record_path.exists():continue
+        if (LOCAL/'runs'/run_id).exists():
+            raise RuntimeError(f'Unreconciled attempt {run_id}: no automatic retry')
+        task=tasks[cell['task']]
+        source=Path(task['source_path'])
+        for name,expected in task['hashes'].items():
+            if hashlib.sha256((source/name).read_bytes()).hexdigest()!=expected:
+                raise RuntimeError('Task package changed after preregistration')
+        image_name=cell['task']+'-8655446'
+        build_json=LOCAL/'task-builds'/image_name/'build.json'
+        if not build_json.exists():
+            build_task(source,'fh-pwragent:8655446',image_name)
+        image=json.loads(build_json.read_text())
+        reserve=pr['reservation_usd'][cell['model']]
+        if index<4:
+            pilot_used=sum(e['charged_micros']+e['reserved_micros'] for e in ledger.snapshot()['entries'] if e['run_id'].startswith('stage1-'))/1e6
+            if pilot_used+reserve>pr['pilot_ceiling_usd']:
+                print(json.dumps({'event':'pause_pilot_admission','used':pilot_used,'needed':reserve}),flush=True);break
+        try:ledger.reserve(run_id,reserve,'parent/helper + conservative next-call headroom')
+        except ValueError as e:
+            print(json.dumps({'event':'pause_budget_admission','run_id':run_id,'reason':str(e)}),flush=True);break
+        ledger.export(LOCAL/'stage-ledger.json')
+        meta=task['task_metadata']
+        timeout=min(float(meta.get('agent',{}).get('timeout_sec',900)),1200)
+        prompt=(source/'instruction.md').read_text()+"\n\nExecution constraints: Work only on this task. Do not launch subagents or other threads. Do not access external solutions, task verifier packages, unrelated host data, or benchmark artifacts. Passwordless sudo is available for task dependencies. Commit the task changes before finishing.\n"
+        inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],timeoutMs=round(timeout*1000),runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',maxObservedCostUsd=pr['observed_cost_stops_usd'][cell['model']],maxObservedTokens=750000)
+        rt=Runtime(run_id,image['image'],inp)
+        row=dict(schema_version=1,run_id=run_id,index=index,cell=cell,task_suite=task['suite'],source_commit=task['source_commit'],task_package_hash=hashlib.sha256(json.dumps(task['hashes'],sort_keys=True).encode()).hexdigest(),preregistration_sha256=hashlib.sha256(PREREG.read_bytes()).hexdigest(),prompt_sha256=hashlib.sha256(prompt.encode()).hexdigest(),image=image,driver_source=str((LOCAL/'cache/current-driver').resolve().name),runtime=json.loads((LOCAL/'runtime.json').read_text()),reservation_usd=reserve)
+        write(record_path,row)
+        print(json.dumps({'event':'launch','run_id':run_id,'task':cell['task'],'model':cell['model'],'on':cell['token_miser'],'reserved_usd':reserve}),flush=True)
+        began=time.monotonic()
+        uncertain=False
+        try:
+            rt.start();proc=rt.agent()
+            result=json.loads((rt.root/'output/result.json').read_text())
+            row.update(agent_exit_code=proc.returncode,agent_status=result['status'],thread_id=result.get('threadId'),turn_id=result.get('turnId'),effective_token_miser=result.get('effectiveTokenMiser'),dispatch_intent_at=result.get('dispatchIntentAt'),error=result.get('error'))
+            if result.get('dispatchIntentAt'):
+                row['accounting']=account(result)
+                row['token_miser_usage']=result.get('tokenMiserUsage')
+                row['tool_accounting']=result.get('toolAccounting')
+                row['family_pricing']=result.get('familyPricing')
+                uncertain=not row['accounting']['usage_complete']
+                if task['suite'].startswith('terminal'):
+                    row['grade']=rt.grade_terminal(source/'tests')
+                else:
+                    row['grade']=grade_deep(rt,source)
+                row['success']=row['grade'].get('success') if result['status']=='completed' else False
+                charged=row['accounting']['conservative_budget_usd']
+                family=(result.get('familyPricing') or {}).get('members',[])
+                if any(m.get('threadId')!=result.get('threadId') and m.get('totalCostMicros',0)>0 for m in family):
+                    uncertain=True
+            else:
+                row['grade']={'status':'infra_invalid','success':None}
+                row['success']=None;charged=0
+            row['duration_seconds']=time.monotonic()-began
+            ledger.settle(run_id,charged,'measured conservative token projection' if not uncertain else 'missing/incomplete usage retains reservation',uncertain=uncertain)
+        except BaseException as e:
+            row.update(infra_error=str(e),duration_seconds=time.monotonic()-began,success=None)
+            # No automatic retry, no release without durable dispatch evidence.
+            ledger.settle(run_id,0,'exception: full reservation retained',uncertain=True)
+            write(record_path,row);ledger.export(LOCAL/'stage-ledger.json');raise
+        finally:
+            rt.close()
+        write(record_path,row);ledger.export(LOCAL/'stage-ledger.json')
+        print(json.dumps({'event':'result','run_id':run_id,'status':row['agent_status'],'grade':row['grade'],'cost':row.get('accounting'),'ledger_remaining_usd':ledger.snapshot()['remaining_usd']}),flush=True)
+        if row['success'] is None or uncertain:
+            print(json.dumps({'event':'pause_invalid_or_uncertain','run_id':run_id}),flush=True);break
+
+
+def grade_deep(rt,source):
+    raise NotImplementedError('DeepSWE separate verifier path must be validated before dispatch')
+
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser();p.add_argument('--limit',type=int);args=p.parse_args();execute(args)
