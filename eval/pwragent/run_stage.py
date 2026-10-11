@@ -67,7 +67,8 @@ def execute(args):
             result=json.loads((rt.root/'output/result.json').read_text())
             row.update(agent_exit_code=proc.returncode,agent_status=result['status'],thread_id=result.get('threadId'),turn_id=result.get('turnId'),effective_token_miser=result.get('effectiveTokenMiser'),dispatch_intent_at=result.get('dispatchIntentAt'),error=result.get('error'))
             if result.get('dispatchIntentAt'):
-                row['accounting']=account(result)
+                events=[json.loads(l) for l in (rt.root/'output/rollout.jsonl').read_text().splitlines() if l.strip()]
+                row['accounting']=account(result,events)
                 row['token_miser_usage']=result.get('tokenMiserUsage')
                 row['tool_accounting']=result.get('toolAccounting')
                 row['family_pricing']=result.get('familyPricing')

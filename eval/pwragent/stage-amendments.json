@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "amendments": [
+    {
+      "time": "2026-10-11",
+      "reason": "Measured development overhead from both existing orchestration threads was about $20 API-equivalent before four-arm pilot completion. Hold another $25 headroom rather than treat subscription-backed engineering as free.",
+      "orchestration_reserve_usd": 50,
+      "stage_ceiling_usd": 250,
+      "task_selection_order_model_prompt_changes": false
+    },
+    {
+      "time": "2026-10-11",
+      "reason": "First completed task returned a pending parent usage label, but matching durable completed-turn event and final provider counters exactly reconciled the attributed row; finalized title helper remains separate. Original run retained with no model retry.",
+      "accounting_rule": "Pending parent labels are complete only with exact identity, attributed usage, completed event and matching final input/cache/output/reasoning counters. Missing or mismatched evidence remains fully reserved.",
+      "task_selection_order_model_prompt_changes": false
+    }
+  ]
+}
