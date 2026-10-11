@@ -15,6 +15,18 @@ def interval(values,seed=20261011):
     return [samples[249],samples[9749]]
 
 
+def verifier_scores(records):
+    """Task-weighted diagnostics; raw check fractions do not replace pass@1."""
+    valid=[r for r in records if r.get('success') is not None]
+    output={'scope':'Original verifier fractions, equal weight per task attempt; independent of completion/budget gate. Individual checks are not independent tasks.'}
+    for key in ['f2p','p2p','partial']:
+        values=[r.get('grade',{}).get('details',{}).get(key) for r in valid]
+        values=[v for v in values if isinstance(v,(int,float)) and not isinstance(v,bool)]
+        output[key]={'task_attempts_with_score':len(values),'mean':statistics.mean(values) if values else None}
+    output['noncompleted_agent_attempts']=sum(r.get('agent_status')!='completed' for r in valid)
+    return output
+
+
 def build(paused=False,protocol=None):
     pr=json.loads(Path(protocol or ROOT/'eval/pwragent/preregistered-stage.json').read_text())
     cohort=pr.get('cohort_id','stage1')
@@ -36,6 +48,7 @@ def build(paused=False,protocol=None):
             total=sum(costs)
             passed=sum(r.get('success') is True for r in valid)
             arms[label]=dict(attempted=len(a),graded_valid=len(valid),infra_invalid=len(a)-len(valid),passes=passed,pass_at_1=passed/len(valid) if valid else None,costed_runs=len(costs),api_equivalent_cost_usd=total,mean_cost_per_attempt_usd=statistics.mean(costs) if costs else None,cost_per_resolved_task_usd=total/passed if passed and len(costs)==len(a) else None)
+            arms[label]['verifier_numeric_diagnostics']=verifier_scores(a)
         by_task={}
         for r in rows:
             pair=by_task.setdefault(r['cell']['task'],{})
@@ -50,6 +63,13 @@ def build(paused=False,protocol=None):
         cost_diffs=[on-off for off,on in cost_pairs]
         paired=dict(n=len(pairs),score_delta_on_minus_off=statistics.mean(diffs) if diffs else None,score_delta_bootstrap_95_ci=interval(diffs),on_only_pass=wins,off_only_pass=losses,exact_mcnemar_p=pvalue,zero_discordance_one_sided_95_upper_probability=(1-.05**(1/len(pairs))) if pairs and not discord else None,cost_pairs=len(cost_pairs),mean_cost_delta_on_minus_off_usd=statistics.mean(cost_diffs) if cost_diffs else None,cost_delta_bootstrap_95_ci_usd=interval(cost_diffs),aggregate_cost_change_fraction=(sum(b for a,b in cost_pairs)/sum(a for a,b in cost_pairs)-1) if cost_pairs and sum(a for a,b in cost_pairs)>0 else None)
         paired.update(off_passes=sum(off['success'] for _,off,on in pairs),on_passes=sum(on['success'] for _,off,on in pairs))
+        paired['verifier_numeric_diagnostics']={}
+        for key in ['f2p','p2p','partial']:
+            values=[]
+            for _,off,on in pairs:
+                scores=[r.get('grade',{}).get('details',{}).get(key) for r in [off,on]]
+                if all(isinstance(v,(int,float)) and not isinstance(v,bool) for v in scores):values.append(scores[1]-scores[0])
+            paired['verifier_numeric_diagnostics'][key]={'pairs_with_scores':len(values),'mean_on_minus_off':statistics.mean(values) if values else None,'bootstrap_95_ci':interval(values)}
         for arm,label in [(False,'off'),(True,'on')]:
             scored=[off if not arm else on for _,off,on in pairs]
             lower=sum(r['accounting']['estimated_cost_usd'] for r in scored)
@@ -81,6 +101,13 @@ def build(paused=False,protocol=None):
     for model,s in summary['models'].items():
         a=s['arms'];p=s['paired'];delta=p['score_delta_on_minus_off'];cost=p.get('reported_cost_change_fraction')
         md.append(f"| {model} | {p['off_passes']}/{p['n']} | {p['on_passes']}/{p['n']} | {p['n']} | {delta*100:.1f} pp | {cost*100:+.2f}% |" if delta is not None and cost is not None else f"| {model} | {p['off_passes']}/{p['n']} | {p['on_passes']}/{p['n']} | {p['n']} | unresolved | unresolved |")
+    if any(s['arms'][label]['verifier_numeric_diagnostics']['partial']['task_attempts_with_score'] for s in summary['models'].values() for label in ['off','on']):
+        md.extend(['','Original verifier numeric scores (equal weight per task attempt; separate from completion/budget-gated task success):','','| Model | Arm | New checks passed | Regression checks passed | All checks passed |','|---|---|---:|---:|---:|'])
+        for model,s in summary['models'].items():
+            for label in ['off','on']:
+                scores=s['arms'][label]['verifier_numeric_diagnostics']
+                values=[f"{scores[k]['mean']*100:.2f}%" if scores[k]['mean'] is not None else 'unavailable' for k in ['f2p','p2p','partial']]
+                md.append('| '+model+' | '+label+' | '+' | '.join(values)+' |')
     incomplete=any(r.get('dispatch_intent_at') and not r.get('accounting',{}).get('usage_complete') for r in records)
     cost_note='Missing cancellation usage means true cost direction remains unresolved; full unknown reservations remain charged.' if incomplete else 'All dispatched cells in this cohort have complete reported usage. Cost direction describes these observed pairs, not a population effect.'
     md.extend(['', 'Cost percentages use all financial pairs, including infrastructure-invalid grades and cancelled runs when present. Score uses valid graded pairs. '+cost_note+' See interim.json for both paired counts, bootstrap intervals, McNemar and finite-sample discordance bounds. A zero-width empirical bootstrap is not proof of equality.'])

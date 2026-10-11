@@ -20,6 +20,16 @@ cells completed and passed the hidden verifier. Further model work is paused;
 the previous one-cohort authorization has been removed from the review gate.
 Reports filter by cohort, so this amendment is not silently pooled with stage1.
 
+After reviewing those results, the user requested more tests. The further
+bounded cohort is `preregistered-hard-python.json`: eight cells on cattrs
+partial structuring and HTTPX incremental JSON streaming, with the same exact
+models/runtime/settings/limits and unchanged cumulative $500 cap. Its separate
+protocol hash authorizes only that cohort; it restores the review pause afterward.
+The additional worst-case trial reservations are $236 plus a $15 engineering
+hold. Original verifier fractions for new and regression checks are reported
+alongside binary task success, with equal task weighting. A high partial score
+cannot turn an incomplete or budget-stopped agent run into task success.
+
 ## Execution and evidence
 
 `runtime-pins.json` records the production application source, eval driver PR,
@@ -55,6 +65,9 @@ identified ChatGPT Pro for every prior task. Managed provider source selects
 chatgpt.com/backend-api/codex in this mode; parent App Server replies resolve
 default tier, helper usage resolves standard, and fast mode is disabled.
 These prove runtime route/settings, not an upstream billing invoice.
+The user's concurrent Codex activity is expected. Account-wide quota and credit
+balance changes are shared observations, not evaluation-only attribution; cost
+accounting uses recorded evaluation/engineering thread and turn IDs.
 
 Run from this checkout after preparing pinned payloads/task packages:
 
