@@ -29,5 +29,23 @@ class AccountingTests(unittest.TestCase):
         events[0]['notification']['params']['tokenUsage']['total']['outputTokens']+=1
         self.assertFalse(account(result,events)['usage_complete'])
 
+    def test_request_price_split_requires_exact_coverage_and_deduplicates_notifications(self):
+        x=line();x.update(inputTokens=300000,cachedInputTokens=100000,cacheWriteInputTokens=0,outputTokens=200,reasoningOutputTokens=150,scope='turn',threadId='thread',turnId='turn',turnUsageAttributed=True)
+        result={'threadId':'thread','turnId':'turn','status':'completed','pricing':{'lines':[x]}}
+        keys=['inputTokens','cachedInputTokens','cacheWriteInputTokens','outputTokens','reasoningOutputTokens']
+        last={k:x[k]//2 for k in keys}
+        events=[]
+        for scale in [1,1,2]:
+            events.append({'notification':{'method':'thread/tokenUsage/updated','params':{'threadId':'thread','turnId':'turn','tokenUsage':{'last':last.copy(),'total':{k:last[k]*scale for k in keys}}}}})
+        events.append({'notification':{'method':'turn/completed','params':{'threadId':'thread','turnId':'turn','turn':{'status':'completed'}}}})
+        a=account(result,events)['rows'][0]
+        self.assertTrue(a['provider_request_coverage_complete'])
+        self.assertEqual(len(a['provider_requests']),2)
+        self.assertAlmostEqual(a['estimated_cost_usd'],(200000*2+100000*.1+200*10)/1e6)
+        events[0]['notification']['params']['tokenUsage']['last']['inputTokens']+=1
+        a=account(result,events)['rows'][0]
+        self.assertFalse(a['provider_request_coverage_complete'])
+        self.assertIsNone(a['estimated_cost_usd'])
+
 
 if __name__=='__main__':unittest.main()
