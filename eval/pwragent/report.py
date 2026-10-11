@@ -46,10 +46,11 @@ def build(paused=False,protocol=None):
         for arm,label in [(False,'off'),(True,'on')]:
             a=[r for r in rows if r['cell']['token_miser']==arm]
             valid=[r for r in a if r.get('success') is not None]
+            pending=[r for r in a if 'grade' not in r and 'infra_error' not in r]
             costs=[r['accounting']['estimated_cost_usd'] for r in a if r.get('accounting',{}).get('usage_complete') and r['accounting'].get('estimated_cost_usd') is not None]
             total=sum(costs)
             passed=sum(r.get('success') is True for r in valid)
-            arms[label]=dict(attempted=len(a),graded_valid=len(valid),infra_invalid=len(a)-len(valid),passes=passed,pass_at_1=passed/len(valid) if valid else None,costed_runs=len(costs),api_equivalent_cost_usd=total,mean_cost_per_attempt_usd=statistics.mean(costs) if costs else None,cost_per_resolved_task_usd=total/passed if passed and len(costs)==len(a) else None)
+            arms[label]=dict(attempted=len(a),pending=len(pending),graded_valid=len(valid),infra_invalid=len(a)-len(valid)-len(pending),passes=passed,pass_at_1=passed/len(valid) if valid else None,costed_runs=len(costs),api_equivalent_cost_usd=total,mean_cost_per_attempt_usd=statistics.mean(costs) if costs else None,cost_per_resolved_task_usd=total/passed if passed and len(costs)==len(a) else None)
             arms[label]['verifier_numeric_diagnostics']=verifier_scores(a)
         by_task={}
         for r in rows:
