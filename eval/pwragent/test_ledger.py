@@ -1,10 +1,21 @@
 import tempfile
 import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
 from pathlib import Path
 from ledger import Ledger
 
 
 class BudgetTests(unittest.TestCase):
+    def test_review_pause_blocks_before_any_model_admission(self):
+        import run_stage
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            (root/'PAUSED_FOR_REVIEW.json').write_text('{}')
+            with patch.object(run_stage,'LOCAL',root):
+                with self.assertRaisesRegex(RuntimeError,'explicit user review'):
+                    run_stage.execute(SimpleNamespace(limit=None,retry_infra=None))
+
     def test_resume_and_uncertain_spend_cannot_release_budget(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)/'ledger.sqlite'

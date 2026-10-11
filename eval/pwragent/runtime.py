@@ -73,6 +73,10 @@ class Runtime:
     def grade_terminal(self, tests):
         # Only after the PwrAgent/Electron process has exited.
         docker('cp',str(tests),f'{self.name}:/tests')
+        # Agent uid501 preserves readonly auth permissions. The original
+        # verifier runs as root and must trust repositories in THIS isolated
+        # container, including task subrepositories such as /app/repo.
+        docker('exec','--user','0:0',self.name,'git','config','--global','--add','safe.directory','*')
         result = docker('exec','--user','0:0','--workdir','/app',self.name,'bash','/tests/test.sh',timeout=900,log=self.root/'verifier.log',check=False)
         docker('cp',f'{self.name}:/logs/verifier/.',self.root/'verifier',check=False)
         reward = self.root/'verifier/reward.txt'

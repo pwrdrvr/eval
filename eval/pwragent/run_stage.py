@@ -17,6 +17,8 @@ def write(path, value):
 
 
 def execute(args):
+    if (LOCAL/'PAUSED_FOR_REVIEW.json').exists():
+        raise RuntimeError('Stage paused for explicit user review; no paid/subscription dispatch authorized')
     pr=json.loads(PREREG.read_text())
     ledger=Ledger(LOCAL/'stage-ledger.sqlite',pr['stage_ceiling_usd'])
     tasks={t['id']:t for t in pr['tasks']}

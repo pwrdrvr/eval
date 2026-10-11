@@ -70,6 +70,13 @@ completion pauses further paid/subscription eval work for explicit user review.
 Report paired pass@1, exact McNemar, task bootstrap cost intervals and cost per
 resolved task. With zero discordant outcomes the empirical bootstrap can be
 zero-width; the report also gives the finite-sample upper bound on discordance.
+Financial pairs retain infrastructure-invalid grades, with separate counts from
+valid score pairs. Reported cancellation costs are partial snapshots; their
+full reservations remain charged. `.eval/PAUSED_FOR_REVIEW.json` blocks every
+dispatch before ledger admission, and requires explicit user review approval
+before an operator clears it. The current stage also reserves $8.605102 for
+separately audited Jarvis eval-only overhead; unrelated root history is excluded.
+Root verifiers trust Git repositories only inside their isolated task container.
 Small samples cannot establish population-level effects. An enabled flag with
 zero interceptions is smoke evidence, not evidence of compression efficacy.
 See `PROVENANCE.md` for instruction-protection fixes and historical auxiliary
@@ -77,4 +84,4 @@ work; standalone Codex Token Miser provenance remains unconfirmed.
 
 Validation on the current checkout and untouched base e837a70: existing Node
 suite33/40 passes in both, with the same seven historical report/skill failures.
-The separate evaluator suite passes8/8. Protected instruction cases pass7/7.
+The separate evaluator suite passes9/9. Protected instruction cases pass7/7.
