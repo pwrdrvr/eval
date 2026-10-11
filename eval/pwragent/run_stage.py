@@ -30,7 +30,18 @@ def execute(args):
             prior=json.loads(record_path.read_text())
             if 'grade' not in prior and 'infra_error' not in prior:
                 raise RuntimeError(f'Unreconciled record {run_id}: no automatic redispatch')
-            continue
+            if args.retry_infra != index+1:
+                continue
+            if prior.get('dispatch_intent_at') or prior.get('grade',{}).get('status')!='infra_invalid':
+                raise RuntimeError('Only an explicitly selected zero-dispatch infrastructure attempt may retry')
+            if not any(e['run_id']==run_id and e['charged_micros']==0 and e['reserved_micros']==0 for e in ledger.snapshot()['entries']):
+                raise RuntimeError('Retry requires settled zero-spend evidence')
+            run_id += '-infra-retry1'
+            record_path=records/(run_id+'.json')
+            if record_path.exists():
+                if 'grade' not in json.loads(record_path.read_text()):
+                    raise RuntimeError('Unreconciled retry')
+                continue
         if (LOCAL/'runs'/run_id).exists():
             raise RuntimeError(f'Unreconciled attempt {run_id}: no automatic retry')
         task=tasks[cell['task']]
@@ -56,8 +67,12 @@ def execute(args):
         timeout=min(float(meta.get('agent',{}).get('timeout_sec',900)),1200)
         prompt=(source/'instruction.md').read_text()+"\n\nExecution constraints: Work only on this task. Do not launch subagents or other threads. Do not access external solutions, task verifier packages, unrelated host data, or benchmark artifacts. Passwordless sudo is available for task dependencies. Commit the task changes before finishing.\n"
         inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],timeoutMs=round(timeout*1000),runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',maxObservedCostUsd=pr['observed_cost_stops_usd'][cell['model']],maxObservedTokens=750000)
-        rt=Runtime(run_id,image['image'],inp)
+        portable=index>=4
+        rt=Runtime(run_id,image['image'],inp,portable=portable)
         row=dict(schema_version=1,run_id=run_id,index=index,cell=cell,task_suite=task['suite'],source_commit=task['source_commit'],task_package_hash=hashlib.sha256(json.dumps(task['hashes'],sort_keys=True).encode()).hexdigest(),preregistration_sha256=hashlib.sha256(PREREG.read_bytes()).hexdigest(),prompt_sha256=hashlib.sha256(prompt.encode()).hexdigest(),image=image,driver_source=str((LOCAL/'cache/current-driver').resolve().name),runtime=json.loads((LOCAL/'runtime.json').read_text()),reservation_usd=reserve)
+        write(record_path,row)
+        row['runtime']=json.loads((LOCAL/('runtime-portable.json' if portable else 'runtime.json')).read_text())
+        row['runtime_portability']='isolated glibc 2.39 ELF interpreter/RPATH relocation; task base unchanged' if portable else 'original managed ELF'
         write(record_path,row)
         print(json.dumps({'event':'launch','run_id':run_id,'task':cell['task'],'model':cell['model'],'on':cell['token_miser'],'reserved_usd':reserve}),flush=True)
         began=time.monotonic()
@@ -124,4 +139,4 @@ def grade_deep(rt,source):
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--limit',type=int);args=p.parse_args();execute(args)
+    p=argparse.ArgumentParser();p.add_argument('--limit',type=int);p.add_argument('--retry-infra',type=int);args=p.parse_args();execute(args)

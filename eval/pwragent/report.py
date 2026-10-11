@@ -28,7 +28,11 @@ def build():
             passed=sum(r.get('success') is True for r in valid)
             arms[label]=dict(attempted=len(a),graded_valid=len(valid),infra_invalid=len(a)-len(valid),passes=passed,pass_at_1=passed/len(valid) if valid else None,costed_runs=len(costs),api_equivalent_cost_usd=total,mean_cost_per_attempt_usd=statistics.mean(costs) if costs else None,cost_per_resolved_task_usd=total/passed if passed and len(costs)==len(a) else None)
         by_task={}
-        for r in rows:by_task.setdefault(r['cell']['task'],{})[r['cell']['token_miser']]=r
+        for r in rows:
+            pair=by_task.setdefault(r['cell']['task'],{})
+            arm=r['cell']['token_miser']
+            if arm not in pair or r.get('success') is not None:
+                pair[arm]=r
         pairs=[(t,p[False],p[True]) for t,p in by_task.items() if set(p)=={False,True} and all(r.get('success') is not None for r in p.values())]
         diffs=[int(on['success'])-int(off['success']) for _,off,on in pairs]
         wins=sum(x==1 for x in diffs);losses=sum(x==-1 for x in diffs);discord=wins+losses

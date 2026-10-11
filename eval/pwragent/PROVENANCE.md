@@ -32,3 +32,9 @@ API-equivalent cost on the existing Codex subscription, including parent,
 helper, retry and orchestration reserves. No new cloud compute is provisioned.
 Outstanding/unknown dispatch usage retains its full reservation. Runs are
 serial. No automatic paid retry or batch beyond this stage is authorized.
+
+## Protected instruction provenance
+
+These trials use real PwrAgent, not a standalone Codex Token Miser wrapper. Production source 07055d7adf7d6845721d572c663553e7dc4102d6 includes e470e46d283fbc6a6417c0f0bf0650c98d3fb1aa (PR2470, October2 protected instruction/source output) and ab5727c9b269d1c51fbf2999fc59681e6df738f9 (PR2520, October3 exact grouped members); ancestry was verified. The mandatory instruction policy covers AGENTS.md, CLAUDE.md, SKILL.md and companion guidance. With exact per-member capture, protected text passes unchanged while eligible search output may be summarized; missing/partial capture preserves the mixed result. Protected contents are excluded from the summary prompt.
+
+Seven focused cases from apps/desktop/src/main/__tests__/token-miser-service.test.ts passed in the actual native arm64 payload image on October11. Cases cover mandatory Code Mode instruction reads, mixed script/partly captured groups, exact protected/source members alongside search, and helper-failure/insufficient-budget fallback. Local log: .eval/protected-instruction-tests.log. This is a regression check of the shipped policy, not evidence that benchmark tasks exercised protected reads; task traces are reported separately.

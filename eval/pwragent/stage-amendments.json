@@ -13,6 +13,11 @@
       "reason": "First completed task returned a pending parent usage label, but matching durable completed-turn event and final provider counters exactly reconciled the attributed row; finalized title helper remains separate. Original run retained with no model retry.",
       "accounting_rule": "Pending parent labels are complete only with exact identity, attributed usage, completed event and matching final input/cache/output/reasoning counters. Missing or mismatched evidence remains fully reserved.",
       "task_selection_order_model_prompt_changes": false
+    },
+    {
+      "time": "2026-10-11",
+      "reason": "First main task Debian bookworm cannot execute Ubuntu-built managed Codex GLIBC_2.39. No turn dispatched and zero spend settled. Isolate original Ubuntu glibc and relocate ELF interpreter/RPATH for managed binary siblings, hash all relocated files. Preserve original task base and verifier. Apply identical portable runtime to every main task/model/flag. Retain zero-dispatch invalid attempt and explicitly allow one named infrastructure retry with unique ID.",
+      "task_selection_order_model_prompt_changes": false
     }
   ]
 }

@@ -29,11 +29,12 @@ def mount(source, target, readonly=False):
 
 
 class Runtime:
-    def __init__(self, run_id, image, input_data, auth='/Users/huntharo/.codex/auth.json'):
+    def __init__(self, run_id, image, input_data, auth='/Users/huntharo/.codex/auth.json', portable=False):
         self.name = 'fh-'+run_id
         self.root = LOCAL/'runs'/run_id
         self.image = image
         self.input = input_data
+        self.portable = portable
         if self.root.exists():
             raise ValueError('existing runtime evidence: reconcile, never overwrite')
         self.root.mkdir(parents=True)
@@ -49,12 +50,14 @@ class Runtime:
             (self.root/'codex','/eval/codex',False),
             (self.root/'output','/eval/output',False),
             (self.auth,'/eval/codex/auth.json',True),
-            (LOCAL/'cache/managed','/opt/managed',True),
-            (LOCAL/'runtime.json','/eval/runtime.json',True),
+            (LOCAL/('cache/portable/managed' if self.portable else 'cache/managed'),'/opt/managed',True),
+            (LOCAL/('runtime-portable.json' if self.portable else 'runtime.json'),'/eval/runtime.json',True),
             (self.root/'input.json','/eval/input.json',True),
             (LOCAL/'cache/current-driver/apps/desktop/eval','/opt/pwragent/apps/desktop/eval',True),
         ]:
             mounts.extend(mount(src,dst,ro))
+        if self.portable:
+            mounts.extend(mount(LOCAL/'cache/portable/glibc','/opt/pwragent-glibc',True))
         docker('run','-d','--name',self.name,'--platform','linux/arm64','--user','0:0','--cpus','2','--memory','6g','--shm-size','512m','--entrypoint','/usr/bin/tini',*mounts,self.image,'--','sleep','infinity')
         # Host uid retains auth.json's 0600 protection and read-only mount;
         # using uid1000 would require widening permissions or a credential copy.
