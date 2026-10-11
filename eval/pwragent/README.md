@@ -29,6 +29,19 @@ The additional worst-case trial reservations are $236 plus a $15 engineering
 hold. Original verifier fractions for new and regression checks are reported
 alongside binary task success, with equal task weighting. A high partial score
 cannot turn an incomplete or budget-stopped agent run into task success.
+All eight cells have now reached an outcome: seven completed passes and one
+Astra ON evaluator IPC interruption. Its original failure stays unchanged;
+read-only native pricing recovery retains the full $47 unknown-usage hold.
+The exact saved unfinished code, including its separately exported new module,
+passed all hidden checks in a post hoc offline diagnostic without code edits or
+new model calls. This is separate from successful agent completion.
+
+The disclosed secondary three-task rollup has Sol3/3 both modes, ON recorded
+cost1.65% lower (task bootstrap interval includes zero). AstraOFF3/3 andON2/3
+completion-gated, with one evaluator interruption; two unaffected model pairs
+tie and the interrupted saved code passes its diagnostic. Astra's recorded
+portion is13.31% lower, but full cost remains unresolved with missing usage.
+`aggregate-hard-cohorts.json` is aggregation-only and cannot authorize dispatch.
 
 ## Execution and evidence
 
@@ -101,7 +114,7 @@ reconciled with the matching completed event and exact provider counters.
 The inclusive approved cumulative ceiling is **$500**, including orchestration,
 subscription API-equivalent usage, helper calls and retries. API credit billing
 is not verified; subscription execution is not assigned zero economic cost.
-There is $80 held engineering allowance, serial concurrency, conservative
+There is $95 held engineering allowance, serial concurrency, conservative
 next-call reservations and per-task observed stops. Stops are post-request,
 not provider billing caps; reservations cover in-flight uncertainty. Final stage
 completion pauses further paid/subscription eval work for explicit user review.
@@ -134,4 +147,4 @@ its cost conclusions. Review files and sanitized receipts stay in ignored
 
 Validation on the current checkout and untouched base e837a70: existing Node
 suite33/40 passes in both, with the same seven historical report/skill failures.
-The separate evaluator suite passes10/10. Protected instruction cases pass7/7.
+The separate evaluator suite passes13/13. Protected instruction cases pass7/7.
