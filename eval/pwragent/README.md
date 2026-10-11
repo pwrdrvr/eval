@@ -62,7 +62,7 @@ reconciled with the matching completed event and exact provider counters.
 The inclusive current stage ceiling is **$250**, including orchestration,
 subscription API-equivalent usage, helper calls and retries. API credit billing
 is not verified; subscription execution is not assigned zero economic cost.
-There is $50 held orchestration allowance, serial concurrency, conservative
+There is $65 held orchestration allowance, serial concurrency, conservative
 next-call reservations and per-task observed stops. Stops are post-request,
 not provider billing caps; reservations cover in-flight uncertainty. Final stage
 completion pauses further paid/subscription eval work for explicit user review.

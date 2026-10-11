@@ -23,6 +23,13 @@
       "time": "2026-10-11",
       "reason": "Cython Astra ON hit fixed inclusive750k-token stop. Original grade0 retained. All usage model rates known, but cancellation terminal notification missing; entire47USD reservation stays charged as uncertain. Remaining fixed cells can continue only under global250USD ledger after that full quarantine; no release, no model retry, no task/order/prompt/limit changes. Unknown rates or infrastructure still stop.",
       "task_selection_order_model_prompt_changes": false
+    },
+    {
+      "time": "2026-10-11",
+      "reason": "Engineering audit root/sibling app-equivalent24.087340USD. Charging all aggregate tokens at expensive parent long-context/cache-write rates gives53.153389USD conservative upper; cheaper helpers included at parent rates. Hold65USD overhead inclusive of stage cap with headroom.",
+      "orchestration_reserve_usd": 65,
+      "stage_ceiling_usd": 250,
+      "task_selection_order_model_prompt_changes": false
     }
   ]
 }
