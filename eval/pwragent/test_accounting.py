@@ -42,6 +42,11 @@ class AccountingTests(unittest.TestCase):
         self.assertTrue(a['provider_request_coverage_complete'])
         self.assertEqual(len(a['provider_requests']),2)
         self.assertAlmostEqual(a['estimated_cost_usd'],(200000*2+100000*.1+200*10)/1e6)
+        x['status']='pending';result['status']='budget_exceeded'
+        partial=account(result,events)
+        self.assertFalse(partial['usage_complete'])
+        self.assertTrue(partial['rows'][0]['reported_usage_only'])
+        self.assertIsNotNone(partial['estimated_cost_usd'])
         events[0]['notification']['params']['tokenUsage']['last']['inputTokens']+=1
         a=account(result,events)['rows'][0]
         self.assertFalse(a['provider_request_coverage_complete'])

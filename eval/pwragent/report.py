@@ -42,6 +42,15 @@ def build(paused=False):
         cost_diffs=[on-off for off,on in cost_pairs]
         paired=dict(n=len(pairs),score_delta_on_minus_off=statistics.mean(diffs) if diffs else None,score_delta_bootstrap_95_ci=interval(diffs),on_only_pass=wins,off_only_pass=losses,exact_mcnemar_p=pvalue,zero_discordance_one_sided_95_upper_probability=(1-.05**(1/len(pairs))) if pairs and not discord else None,cost_pairs=len(cost_pairs),mean_cost_delta_on_minus_off_usd=statistics.mean(cost_diffs) if cost_diffs else None,cost_delta_bootstrap_95_ci_usd=interval(cost_diffs),aggregate_cost_change_fraction=(sum(b for a,b in cost_pairs)/sum(a for a,b in cost_pairs)-1) if cost_pairs and sum(a for a,b in cost_pairs)>0 else None)
         paired.update(off_passes=sum(off['success'] for _,off,on in pairs),on_passes=sum(on['success'] for _,off,on in pairs))
+        # Preserve failed/cancelled pairs in cost bounds. Complete-price pairs
+        # are a secondary coverage statistic, not an efficacy subset.
+        observed_pairs=[(off,on) for _,off,on in pairs if all(r.get('accounting',{}).get('estimated_cost_usd') is not None for r in [off,on])]
+        if observed_pairs:
+            observed_off=sum(off['accounting']['estimated_cost_usd'] for off,on in observed_pairs)
+            observed_on=sum(on['accounting']['estimated_cost_usd'] for off,on in observed_pairs)
+            upper_off=sum(off['accounting']['estimated_cost_usd'] if off['accounting']['usage_complete'] else off['reservation_usd'] for off,on in observed_pairs)
+            upper_on=sum(on['accounting']['estimated_cost_usd'] if on['accounting']['usage_complete'] else on['reservation_usd'] for off,on in observed_pairs)
+            paired.update(all_pairs_reported_cost_n=len(observed_pairs),reported_cost_off_usd=observed_off,reported_cost_on_usd=observed_on,reported_cost_change_fraction=observed_on/observed_off-1 if observed_off else None,uncertain_cost_pairs=sum(not(off['accounting']['usage_complete'] and on['accounting']['usage_complete']) for off,on in observed_pairs),possible_total_cost_delta_interval_usd=[observed_on-upper_off,upper_on-observed_off],reported_cost_limitation='Provider-reported snapshot estimate; cancelled in-flight usage can be missing. Full unknown reservations remain charged. No API billing invoice.')
         summary['models'][model]={'arms':arms,'paired':paired}
     dest=LOCAL/'report';dest.mkdir(exist_ok=True)
     (dest/'interim.json').write_text(json.dumps(summary,indent=2)+'\n')

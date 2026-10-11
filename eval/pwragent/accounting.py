@@ -70,7 +70,8 @@ def account(result,events=()):
         # Total input < threshold proves every component short even if peak
         # metadata is absent. Mixed/unknown requests retain the price interval.
         exact_short=inp<=CARD['long_context_threshold_input_tokens'] or (isinstance(context,int) and context<=CARD['long_context_threshold_input_tokens'])
-        request_proven=bool(reconciled and requests and all(sum(r.get(k,0) for r in requests)==line.get(k,0) for k in ['inputTokens','cachedInputTokens','cacheWriteInputTokens','outputTokens','reasoningOutputTokens']))
+        parent_row=(line.get('scope')=='turn' and line.get('threadId')==result.get('threadId') and line.get('turnId')==result.get('turnId') and line.get('turnUsageAttributed') is True)
+        request_proven=bool(parent_row and requests and all(sum(r.get(k,0) for r in requests)==line.get(k,0) for k in ['inputTokens','cachedInputTokens','cacheWriteInputTokens','outputTokens','reasoningOutputTokens']))
         request_cost=None
         if request_proven:
             request_cost=0
@@ -82,6 +83,7 @@ def account(result,events=()):
         rows.append(dict(usage_line_id=identity,model=model,scope=line.get('scope'),status=line.get('status'),protocol_reconciled=reconciled,service_tier=line.get('serviceTier'),input_tokens=inp,uncached_input_tokens=inp-cache,cached_input_tokens=cache,cache_write_tokens=write,output_tokens=out,reasoning_tokens=line.get('reasoningOutputTokens'),peak_context_tokens=context,provider_equivalent_cost_usd=line.get('totalCostMicros',0)/1e6,estimated_cost_usd=lower if exact_short else None,projected_short_usd=lower,projected_long_usd=upper,conservative_budget_usd=conservative,turn_usage_attributed=line.get('turnUsageAttributed')))
         rows[-1]['provider_requests']=requests if request_proven else []
         rows[-1]['provider_request_coverage_complete']=request_proven
+        rows[-1]['reported_usage_only']=not (line.get('status')=='finalized' or reconciled)
         if request_cost is not None:rows[-1]['estimated_cost_usd']=request_cost
     missing=result.get('dispatchIntentAt') and not rows
     return dict(rows=rows,unpriced_models=unknown,usage_complete=bool(rows) and not unknown and not missing and all(r['status']=='finalized' or r['protocol_reconciled'] for r in rows),provider_equivalent_cost_usd=sum(r['provider_equivalent_cost_usd'] for r in rows),estimated_cost_usd=sum(r['estimated_cost_usd'] for r in rows) if rows and all(r['estimated_cost_usd'] is not None for r in rows) else None,projected_cost_lower_usd=sum(r['projected_short_usd'] for r in rows),projected_cost_upper_usd=sum(r['projected_long_usd'] for r in rows),conservative_budget_usd=sum(r['conservative_budget_usd'] for r in rows),billing_basis='Codex subscription usage; not API credit billing; estimated_cost_usd uses common 2026-10-11 card, provider_equivalent_cost_usd preserves app historical catalog')
