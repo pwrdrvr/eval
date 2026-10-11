@@ -23,6 +23,8 @@ def export():
                     rate=p.get('rate_limits') or {};limits={}
                     for period in ['primary','secondary']:
                         if isinstance(rate.get(period),dict):limits[period]={k:rate[period].get(k) for k in ['used_percent','window_minutes','resets_at'] if k in rate[period]}
+                    if rate.get('plan_type'):limits['plan_type']=rate['plan_type']
+                    if isinstance(rate.get('credits'),dict):limits['credits']={k:rate['credits'][k] for k in ['has_credits','unlimited','balance'] if k in rate['credits']}
                     safe.append({'timestamp':e.get('timestamp'),'type':kind,'info':p.get('info'),'rate_limits':limits})
                 elif kind in ['turn_aborted','task_complete','task_started']:
                     safe.append({'timestamp':e.get('timestamp'),'type':kind,**{k:p[k] for k in ['root_turn_id','turn_id','reason','started_at','completed_at','duration_ms'] if k in p}})
