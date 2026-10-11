@@ -14,17 +14,17 @@ in pristine containers. Every admitted attempt, including infrastructure and
 model failures, is retained. No benchmark solution or task patch is published.
 
 The separately approved harder cohort is `preregistered-hard-httpx.json`: only
-four HTTPX multipart task cells, both exact models OFF/ON,2million inclusive
-tokens, cumulative$500 ceiling including all earlier charges/holds. Its protocol
-hash alone is authorized through the review gate; the original stage remains
-paused. The runner always stops after those four cells and restores the pause.
+four HTTPX multipart task cells, both exact models OFF/ON, two million inclusive
+tokens, cumulative $500 ceiling including all earlier charges/holds. All four
+cells completed and passed the hidden verifier. Further model work is paused;
+the previous one-cohort authorization has been removed from the review gate.
 Reports filter by cohort, so this amendment is not silently pooled with stage1.
 
 ## Execution and evidence
 
 `runtime-pins.json` records the production application source, eval driver PR,
-managed release and exact hashes. The additive headless driver is PwrAgent
-PR2707 at6062dd7. Build its production image following that PR's
+managed release and exact hashes. Stage1 used PwrAgent PR2707 at6062dd7;
+the harder cohort used2c7d84bd93bb7d26698befce8f1ccbf840055ab9. Build its production image following that PR's
 `apps/desktop/eval/HEADLESS.md`, then overlay the pinned eval directory. Current
 pilot payload is `fh-pwragent:8655446`. Source packages live under `.eval/cache`;
 each task file is checked against the preregistration before dispatch. Local
@@ -85,10 +85,10 @@ reconciled with the matching completed event and exact provider counters.
 
 ## Budget and interpretation
 
-The inclusive current stage ceiling is **$250**, including orchestration,
+The inclusive approved cumulative ceiling is **$500**, including orchestration,
 subscription API-equivalent usage, helper calls and retries. API credit billing
 is not verified; subscription execution is not assigned zero economic cost.
-There is $65 held orchestration allowance, serial concurrency, conservative
+There is $80 held engineering allowance, serial concurrency, conservative
 next-call reservations and per-task observed stops. Stops are post-request,
 not provider billing caps; reservations cover in-flight uncertainty. Final stage
 completion pauses further paid/subscription eval work for explicit user review.
@@ -107,6 +107,17 @@ Small samples cannot establish population-level effects. An enabled flag with
 zero interceptions is smoke evidence, not evidence of compression efficacy.
 See `PROVENANCE.md` for instruction-protection fixes and historical auxiliary
 work; standalone Codex Token Miser provenance remains unconfirmed.
+
+The harder HTTPX cohort has one valid pair per model. Both flags passed all
+122 fail-to-pass and1272 pass-to-pass tests. On the common dated default price
+card, Sol ON cost $0.57445632 versus OFF $0.51689660 (+11.14%); Astra ON cost
+$1.73880938 versus OFF $2.62639700 (-33.80%). All four have complete usage,
+including native helpers. This single task does not establish a population
+effect; a zero-width task bootstrap with n=1 carries no generalization evidence.
+Stage1 remains separate: five valid score pairs per model, Sol ON3/5 versus
+OFF4/5 and Astra4/5 both; cancelled usage and four invalid Git verifiers limit
+its cost conclusions. Review files and sanitized receipts stay in ignored
+`.eval/report` and `.eval/report-stage2-hard-httpx`, with all admitted attempts.
 
 Validation on the current checkout and untouched base e837a70: existing Node
 suite33/40 passes in both, with the same seven historical report/skill failures.
