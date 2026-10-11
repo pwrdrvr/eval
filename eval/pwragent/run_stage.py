@@ -26,7 +26,11 @@ def execute(args):
         label='sol' if cell['model']=='gpt-6.1-sol' else 'astra'
         run_id=f"stage1-{index+1:02}-{cell['task']}-{label}-{'on' if cell['token_miser'] else 'off'}"
         record_path=records/(run_id+'.json')
-        if record_path.exists():continue
+        if record_path.exists():
+            prior=json.loads(record_path.read_text())
+            if 'grade' not in prior and 'infra_error' not in prior:
+                raise RuntimeError(f'Unreconciled record {run_id}: no automatic redispatch')
+            continue
         if (LOCAL/'runs'/run_id).exists():
             raise RuntimeError(f'Unreconciled attempt {run_id}: no automatic retry')
         task=tasks[cell['task']]
@@ -96,7 +100,26 @@ def execute(args):
 
 
 def grade_deep(rt,source):
-    raise NotImplementedError('DeepSWE separate verifier path must be validated before dispatch')
+    from runtime import docker,mount
+    patch=rt.root/'output/patch.diff'
+    if not patch.exists():
+        return {'status':'infra_invalid','success':None,'reason':'missing exported patch'}
+    name=rt.name+'-verifier'
+    # No agent state, auth, profile, rollout, solution, or managed runtime mount.
+    # DeepSWE declares a separate verifier with no network; dependencies are
+    # already installed in the task base image. Preserve that verifier policy.
+    docker('run','-d','--name',name,'--platform','linux/arm64','--user','0:0','--cpus','2','--memory','6g','--network','none','--entrypoint','/usr/bin/tini',*mount(source/'tests','/tests',True),*mount(patch,'/logs/artifacts/model.patch',True),rt.image,'--','sleep','infinity')
+    try:
+        docker('exec',name,'sh','-c','mkdir -p /logs/verifier && git config --global --add safe.directory /app')
+        r=docker('exec','--workdir','/app',name,'bash','/tests/test.sh',timeout=1800,log=rt.root/'verifier.log',check=False)
+        docker('cp',f'{name}:/logs/verifier/.',rt.root/'verifier',check=False)
+        reward=rt.root/'verifier/reward.json'
+        if not reward.exists():
+            return {'status':'infra_invalid','success':None,'exit_code':r.returncode,'reason':'original verifier emitted no structured reward'}
+        result=json.loads(reward.read_text())
+        value=result.get('reward')
+        return {'status':'graded' if value in (0,1) else 'infra_invalid','success':value==1 if value in (0,1) else None,'reward':value,'details':result,'exit_code':r.returncode}
+    finally:docker('rm','-f',name,check=False)
 
 
 if __name__=='__main__':
