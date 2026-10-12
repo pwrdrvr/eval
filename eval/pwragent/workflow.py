@@ -1,7 +1,7 @@
 """A separately labeled multi-project workflow with original component graders.
 
 No provider calls are made here. This is not a published single-task benchmark.
-The agent sees six public feature requests together; original hidden verifiers
+The agent sees multiple public feature requests together; original hidden verifiers
 still run in separate pristine component images after the agent exits.
 """
 import hashlib

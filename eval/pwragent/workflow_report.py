@@ -9,6 +9,7 @@ from cost_band_report import build as band_report
 
 def build(protocol):
     pr=json.loads(Path(protocol).read_text())
+    component_count=len(pr['tasks'][0]['task_metadata']['workflow_components'])
     rows=[json.loads(p.read_text()) for p in sorted((LOCAL/'records').glob('*.json'))]
     rows=[r for r in rows if r.get('cohort_id')==pr['cohort_id']]
     arms={}
@@ -37,19 +38,20 @@ def build(protocol):
             paired['cost_delta_on_minus_off_usd']=on['reported_cost_usd']-off['reported_cost_usd']
             paired['cost_change_fraction']=on['reported_cost_usd']/off['reported_cost_usd']-1
     result=dict(schema_version=1,cohort_id=pr['cohort_id'],primary_metric=pr['analysis']['primary_correctness'],
-                uncertainty='One paired workflow. Six components are correlated within each shared model thread and are not six independent experiments. This is a descriptive result; no population-effect confidence interval is justified.',
-                comparability='New six-feature workflow, separate from the fixed single-task cohort and published leaderboard. Original component verifiers are unchanged.',
+                uncertainty=f'One paired workflow. Its {component_count} components are correlated within each shared model thread and are not independent experiments. This is a descriptive result; no population-effect confidence interval is justified.',
+                comparability=f'New workflow of {component_count} features, separate from other cohorts and published leaderboards. Original component verifiers are unchanged.',
                 billing='Codex Pro usage, priced at the frozen standard API card for comparison. Not API-key charges or billing invoices. Reasoning is included in output.',
                 arms=arms,paired=paired,protocol=pr)
     dest=LOCAL/('report-'+pr['cohort_id']);dest.mkdir(exist_ok=True)
     (dest/'workflow.json').write_text(json.dumps(result,indent=2)+'\n')
     lines=['# Longer Sol workflow: Token Miser OFF/ON','',result['comparability'],'',result['billing'],'',
-           '| Arm | Features passed | Primary score | All six passed and completed | Estimated cost | Cost per verified feature |',
+           '| Arm | Features passed | Primary score | All features passed and completed | Estimated cost | Cost per verified feature |',
            '|---|---:|---:|---|---:|---:|']
     for label in ['off','on']:
         arm=arms.get(label,{})
         score=arm.get('primary_score');cost=arm.get('reported_cost_usd');per=arm.get('cost_per_verified_feature_usd')
-        lines.append('| '+label.upper()+' | '+str(arm.get('component_passes','pending'))+'/'+str(arm.get('component_count',6))+' | '+(f'{score:.1%}' if score is not None else 'pending')+' | '+str(arm.get('whole_thread_success','pending'))+' | '+(f'${cost:.4f}' if cost is not None else 'unknown/pending')+' | '+(f'${per:.4f}' if per is not None else 'undefined/pending')+' |')
+        passed=arm.get('component_passes');whole=arm.get('whole_thread_success')
+        lines.append('| '+label.upper()+' | '+(str(passed) if passed is not None else 'pending')+'/'+str(arm.get('component_count') or component_count)+' | '+(f'{score:.1%}' if score is not None else 'pending')+' | '+(str(whole) if whole is not None else 'pending')+' | '+(f'${cost:.4f}' if cost is not None else 'unknown/pending')+' | '+(f'${per:.4f}' if per is not None else 'undefined/pending')+' |')
     lines+=['',result['uncertainty'],'','The token-breakdown and paired-token-deltas files contain cached input, uncached input, output, reasoning, and separate summary-model rows. Missing usage remains unknown with its reservation retained.']
     (dest/'workflow.md').write_text('\n'.join(lines)+'\n')
     usage_report(protocol);band_report(protocol)

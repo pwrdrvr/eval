@@ -15,7 +15,10 @@ The cohort adopts corrected driver beec8a6, has no cumulative-token cutoff, and
 retains each task's original 10800-second allowance. Before dispatch, original
 verifiers rejected unchanged code and accepted the reference solution in
 separate containers; no-turn PwrAgent checks exercised nested-directory export.
-All 12 cells completed with valid grading and complete usage. Each model passed
+All 12 cells completed with valid grading. A subsequent full-wire audit found
+one interrupted Luna helper with no counters in the small Sol ArkType ON run;
+its recorded cost is partial and a conservative uncertainty allowance remains.
+The other eleven runs have complete parent/helper coverage. Each model passed
 two of three tasks in both modes. Astra's three OFF baselines cost $3.52–4.07;
 its paired aggregate ON cost was 0.47% higher. Sol's baselines cost $0.59–0.75,
 so those results do not answer the user's requested larger-thread question.
@@ -47,8 +50,23 @@ the equal-weight fraction of six verified features; complete all-feature success
 is secondary. One workflow pair is the statistical unit, not six independent
 trials. Both arms share the original task contents, prompts, image and limits.
 The original six three-hour allowances are added together; no cumulative-token
-cap is imposed. The pair shares the same new-stage $500 ledger, then pauses for
-review. `workflow_report.py` exports its separate results and token breakdowns.
+cap is imposed. The pair shares the same new-stage $500 ledger.
+`workflow_report.py` exports its separate results and token breakdowns.
+
+Its completed OFF baseline cost $2.222511, still below the requested $3 floor.
+The paired ON completed at $2.170410 (−2.34%); feature score rose from 2/6 to 3/6.
+Both workflow arms have complete provider/helper counters. This is descriptive
+evidence from one pair, separate from the requested price-band sample.
+Before ON finished, `preregistered-final-workflow-plan.json` prospectively
+selected one final larger Sol pair: all six earlier features plus six distinct
+features from six more repositories. This keeps prior failures in the workload.
+The new pair requires both $90 trial envelopes and all operator/helper/closeout
+holds to fit the unchanged $500 ceiling. It requires original baseline/oracle
+checks, combined export/grading validation, and a zero-turn sandbox/Pro check
+before a final protocol and images are frozen. There is no token or spend
+padding, and no repeated attempt until a target price is reached. After that
+one additional pair the stage pauses for review, even if it also misses the
+price band. All three current-stage cohorts remain separate.
 
 The sections below retain historical cohorts and limitations.
 

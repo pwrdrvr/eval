@@ -17,6 +17,8 @@ def main():
     prior=json.loads((ROOT/'eval/pwragent/preregistered-sol-workflow.json').read_text())
     plan_path=ROOT/'eval/pwragent/preregistered-final-workflow-plan.json'
     plan=json.loads(plan_path.read_text())
+    assert command(['git','-C',LOCAL/'cache/deep-swe','rev-parse','HEAD']).stdout.strip()==plan['source_commit']
+    assert not command(['git','-C',LOCAL/'cache/deep-swe','status','--porcelain','--untracked-files=no']).stdout.strip()
     rows=[json.loads(p.read_text()) for p in (LOCAL/'records').glob('stage5-sol-workflow-*.json')]
     assert len(rows)==2 and all(r.get('accounting',{}).get('usage_complete') for r in rows), 'Finish and reconcile the current pair first'
     assert all(r.get('agent_status')=='completed' for r in rows)

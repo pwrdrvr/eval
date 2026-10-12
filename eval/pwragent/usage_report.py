@@ -43,24 +43,32 @@ def build(protocol):
     records=[json.loads(p.read_text()) for p in sorted((LOCAL/'records').glob('*.json'))]
     records=[r for r in records if r.get('cohort_id')==pr['cohort_id']]
     groups=breakdown(records)
+    missing=[]
+    for record in records:
+        for usage in record.get('accounting',{}).get('missing_usage',[]):
+            missing.append(dict(run_id=record['run_id'],**usage))
+        for request in record.get('provider_usage_audit',{}).get('unresolved_dispatches',[]):
+            missing.append(dict(run_id=record['run_id'],status='dispatch_unresolved',**request))
     dest=LOCAL/('report-'+pr['cohort_id']);dest.mkdir(exist_ok=True)
     note=('API-equivalent estimates for Pro subscription execution, not API bills. '
           'Input = cached + uncached. Cache writes are a subset of uncached input. '
           'Reasoning is a subset of output; never add it again. Costs sum uncached input excluding writes, '
           'cached input, writes, and output including reasoning. Summary-model and other helpers are separate. '
-          'Incomplete rows are reported snapshots, not final usage. Account-wide quota changes are excluded.')
-    (dest/'token-breakdown.json').write_text(json.dumps({'notes':note,'groups':groups},indent=2)+'\n')
+          'Coverage describes the entire trial: shown rows can have final counters while another helper is missing. '
+          'Missing calls remain unknown in missing-usage.json. Account-wide quota changes are excluded.')
+    (dest/'token-breakdown.json').write_text(json.dumps({'notes':note,'groups':groups,'missing_usage':missing},indent=2)+'\n')
+    (dest/'missing-usage.json').write_text(json.dumps(missing,indent=2)+'\n')
     if groups:
         with (dest/'token-breakdown.csv').open('w',newline='') as f:
             writer=csv.DictWriter(f,fieldnames=[k for k in groups[0] if k!='usage_line_ids'])
             writer.writeheader();writer.writerows({k:v for k,v in g.items() if k!='usage_line_ids'} for g in groups)
     md=['# Measured token breakdown','',note,'',
-        '| Run | Usage model / role | Cached input | Uncached input | Output (includes reasoning) | Reasoning subset | Estimated $ |',
-        '|---|---|---:|---:|---:|---:|---:|']
+        '| Run | Usage model / role | Cached input | Uncached input | Output (includes reasoning) | Reasoning subset | Reported $ | Trial usage coverage |',
+        '|---|---|---:|---:|---:|---:|---:|---|']
     for g in groups:
         count=lambda key: f"{g[key]:,}" if g[key] is not None else 'unknown'
         cost=f"{g['estimated_cost_usd']:.6f}" if g['estimated_cost_usd'] is not None else 'unknown'
-        md.append(f"| {g['run_id']} | {g['usage_model']} / {g['usage_role']} | {count('cached_input_tokens')} | {count('uncached_input_tokens')} | {count('output_tokens')} | {count('reasoning_tokens')} | {cost} |")
+        md.append(f"| {g['run_id']} | {g['usage_model']} / {g['usage_role']} | {count('cached_input_tokens')} | {count('uncached_input_tokens')} | {count('output_tokens')} | {count('reasoning_tokens')} | {cost} | {'complete' if g['usage_complete'] else 'partial'} |")
     (dest/'token-breakdown.md').write_text('\n'.join(md)+'\n')
     return dest
 

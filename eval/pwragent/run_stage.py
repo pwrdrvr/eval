@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import time
-from accounting import account
+from accounting import account, CARD
 from build_task import build_task
 from ledger import Ledger, ledger_paths
 from runtime import LOCAL, ROOT, Runtime
@@ -111,6 +111,25 @@ def execute(args):
             if result.get('dispatchIntentAt'):
                 events=[json.loads(l) for l in (rt.root/'output/rollout.jsonl').read_text().splitlines() if l.strip()]
                 row['accounting']=account(result,events)
+                # A finalized ledger does not prove that a cancelled native
+                # helper emitted a pricing row. Audit every captured dispatch.
+                from protocol_usage_audit import audit as audit_provider_usage
+                coverage=audit_provider_usage(rt.root)
+                row['provider_usage_audit']={k:coverage[k] for k in [
+                    'protocol_sha256','result_sha256','all_observed_turns_reconciled',
+                    'unresolved_dispatches','duplicate_priced_turns','priced_turns_without_observed_start']}
+                row['provider_usage_audit']['turn_count']=len(coverage['turns'])
+                if not coverage['all_observed_turns_reconciled']:
+                    row['accounting']['pricing_rows_complete']=row['accounting']['usage_complete']
+                    row['accounting']['usage_complete']=False
+                    row['accounting']['missing_usage']=[{
+                        'thread_id':t['thread_id'],'turn_id':t['turn_id'],
+                        'model':t['model'],'status':t['terminal_status'],
+                        'counter_mismatches':t['counter_mismatches']}
+                        for t in coverage['turns'] if not t['complete']]
+                    for missing in row['accounting']['missing_usage']+coverage['unresolved_dispatches']:
+                        if missing.get('model') not in CARD['models']:
+                            row['accounting']['unpriced_models'].append(missing.get('model') or 'unknown_dispatched_model')
                 row['token_miser_usage']=result.get('tokenMiserUsage')
                 row['tool_accounting']=result.get('toolAccounting')
                 row['family_pricing']=result.get('familyPricing')

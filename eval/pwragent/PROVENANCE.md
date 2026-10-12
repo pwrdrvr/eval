@@ -36,7 +36,11 @@ compute is used. Outstanding/unknown dispatch usage retains its reservation.
 Runs are serial. The current stage uses pinned public DeepSWE packages; the
 fixed single-task cohort and the subsequent six-feature Sol workflow have
 separate preregistrations, metrics and reports. They are not silently pooled.
-The workflow's two arms are followed by a review pause, not automatic expansion.
+The six-feature workflow's OFF baseline remained below $3. Before its ON result,
+one final twelve-feature Sol pair was prospectively selected under the same
+authorization and ceiling. It retains all earlier features and adds six distinct
+repositories. After that additional pair, review is required before expansion,
+regardless of whether the resulting cost falls in the requested price band.
 
 ## Protected instruction provenance
 

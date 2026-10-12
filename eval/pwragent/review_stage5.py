@@ -1,5 +1,6 @@
 """Assemble the review packet without pooling different task cohorts."""
 import csv
+import datetime
 import json
 from collections import defaultdict
 from pathlib import Path
@@ -8,14 +9,16 @@ from runtime import LOCAL
 
 def build():
     fixed = 'stage5-long-threads'
-    workflow = 'stage5-sol-workflow'
+    small_workflow = 'stage5-sol-workflow'
+    final_workflow = 'stage5-final-sol-workflow'
+    workflow = final_workflow if (LOCAL/('report-'+final_workflow)/'workflow.json').exists() else small_workflow
     records = [json.loads(p.read_text()) for p in (LOCAL/'records').glob('*.json')]
-    records = [r for r in records if r.get('cohort_id') in [fixed, workflow]]
-    band = json.loads((LOCAL/('report-'+fixed)/'cost-band.json').read_text())
+    records = [r for r in records if r.get('cohort_id') in [fixed, small_workflow, final_workflow]]
     flow = json.loads((LOCAL/('report-'+workflow)/'workflow.json').read_text())
     overhead = json.loads((LOCAL/'stage5-engineering-overhead.json').read_text())
     ledger = json.loads((LOCAL/'stage5-ledger.json').read_text())
     lines = ['# Token Miser evaluation: new $500 stage', '',
+             'Generated '+datetime.datetime.now(datetime.timezone.utc).isoformat()+'. The stage remains in progress until the final twelve-feature pair is complete and the review gate is restored.', '',
              'All dollars below are standard-card API-equivalent estimates of Codex Pro usage, not API-key charges or invoices. The account-wide usage of the user’s other Codex work is excluded.', '',
              '## Results', '',
              '| Model and workload | OFF score | ON score | OFF cost | ON cost | Scope |',
@@ -31,19 +34,20 @@ def build():
     arms = flow['arms']
     def workflow_arm(label):
         arm = arms.get(label)
-        if not arm:return 'pending','pending'
+        if not arm or arm.get('primary_score') is None:return 'pending','pending'
         return f"{arm['component_passes']}/{arm['component_count']} features", f"${arm['reported_cost_usd']:.6f}" if arm['reported_cost_usd'] is not None else 'unknown'
     so, sc = workflow_arm('off'); sn, snc = workflow_arm('on')
-    lines.append(f'| Sol: one six-feature workflow | {so} | {sn} | {sc} | {snc} | One paired workflow; components are correlated |')
+    count=len(flow['protocol']['tasks'][0]['task_metadata']['workflow_components'])
+    lines.append(f'| Sol: one workflow of {count} features | {so} | {sn} | {sc} | {snc} | One paired workflow; components are correlated |')
     paired = flow.get('paired', {})
     if 'cost_change_fraction' in paired:
         lines += ['', f"Sol workflow: observed ON-minus-OFF feature score change {paired['score_delta_on_minus_off']:+.1%}; estimated cost change {paired['cost_change_fraction']:+.2%}. This describes one pair only."]
     for row in records:
-        if row['cohort_id'] == workflow:
+        if row['cohort_id'] == workflow and row.get('grade',{}).get('details'):
             detail=row['grade']['details'];label='ON' if row['cell']['token_miser'] else 'OFF'
             lines += ['', f"Sol {label}: {detail['f2p_passed']}/{detail['f2p_total']} required new checks and {detail['p2p_passed']}/{detail['p2p_total']} regression checks passed; agent status {row['agent_status']}."]
     lines += ['', 'Astra: observed score unchanged at 2/3, cost +0.46596%. The paired mean cost change is +$0.01765/task; the empirical task-bootstrap 95% interval is −$0.29793 to +$0.24523/task. Three selected tasks are too few for a reliable population conclusion. Zero discordant grades does not establish equal model performance.', '',
-              'Sol: the workflow OFF cost is $2.222511, below the requested $3 floor. This mismatch remains explicit. The earlier three single-task Sol baselines were only $0.59–0.75; their +14.63% aggregate ON cost is out-of-band auxiliary evidence. Neither cohort is silently presented as a $3–15 Sol sample.', '',
+              'The earlier six-feature Sol OFF baseline cost $2.222511, below the requested $3 floor. Its ON cost was $2.170410 (−2.34%) and its feature score rose from 2/6 to 3/6, with complete usage. The earlier three single-task Sol baselines were only $0.59–0.75; reported ON cost was at least 14.63% higher, with one unreported interrupted Luna helper still unknown. Neither earlier cohort is silently presented as a $3–15 Sol sample. Before the six-feature ON result, one final workload of twelve distinct features was selected; its price-band membership is determined by its complete OFF cost.', '',
               flow['uncertainty'], '', '## Measured tokens', '',
               'Cumulative counts across provider requests. Reasoning is a subset of output and is priced once. Uncached input includes any cache writes; the CSVs also separate cache writes and nonreasoning output.', '',
               '| Model/workload | Mode | Usage role/model | Cached input | Uncached input | Output | Reasoning subset | Estimated cost |',
@@ -64,8 +68,10 @@ def build():
         lines.append(f"| {model} | {'ON' if on=='True' else 'OFF'} | {role} / {usage_model} | {counts} | ${row['estimated_cost_usd']:.6f} |")
     complete=[r for r in records if r.get('accounting',{}).get('usage_complete')]
     measured=sum(r['accounting']['estimated_cost_usd'] for r in complete)
+    partial=sum(r.get('accounting',{}).get('estimated_cost_usd') or 0 for r in records if r not in complete)
     lines += ['', '## Budget and coverage', '',
               f"Complete trial/helper usage: **${measured:.6f}**, across {len(complete)} completed-usage records. Incomplete records, if any, retain their reservation and are not treated as zero.", '',
+              f"Additional known usage from incomplete records: **${partial:.6f}**. One earlier small Sol ON helper was interrupted without final counters; its additional $90 allowance remains held. That allowance is conservative uncertainty, not a measured charge. Parent completion and grades were not changed.", '',
               f"Operator engineering usage observed through {overhead['captured_at']}: **${overhead['owner_measured_request_estimate_usd']:.6f}**, plus **${overhead.get('owner_reported_native_helper_cost_usd',0):.6f}** in separately retained native helpers. The active operator turn is not yet final. Jarvis evaluation-only uncertainty is bounded at $10, other helper uncertainty at $1, and the current/closing-response allowance is $40. These allowances are not measured spend.", '',
               f"Conservative admission ledger: ${ledger['charged_usd']:.6f} charged against reservations, ${ledger['reserved_usd']:.6f} still reserved, ${ledger['remaining_usd']:.6f} available under the new $500 ceiling. Settled trial charges use conservative rate bounds and can exceed the complete common-card estimate above. Engineering holds include unused future-work allowance; they are not bills.", '',
               '## Validity and limitations', '',
