@@ -5,10 +5,11 @@ from pathlib import Path
 from runtime import LOCAL
 
 
-def export():
+def export(cohort=None):
     count=0
     for record in sorted((LOCAL/'records').glob('*.json')):
         row=json.loads(record.read_text());thread=row.get('thread_id')
+        if cohort and row.get('cohort_id')!=cohort:continue
         if not thread or not row.get('dispatch_intent_at'):continue
         root=LOCAL/'runs'/row['run_id'];receipts=[]
         for session in (root/'codex/sessions').rglob('*.jsonl'):
@@ -33,4 +34,6 @@ def export():
     print(json.dumps({'receipt_exports':count,'model_calls':0}))
 
 
-if __name__=='__main__':export()
+if __name__=='__main__':
+    import argparse
+    p=argparse.ArgumentParser();p.add_argument('--cohort');export(p.parse_args().cohort)

@@ -7,7 +7,7 @@ from pathlib import Path
 from runtime import LOCAL
 
 
-def export():
+def export(cohort=None):
     # Read approved auth solely to scrub any exact credential strings from
     # selected diagnostics. Never export/auth-copy or print this document.
     auth=json.loads(Path('/Users/huntharo/.codex/auth.json').read_text())
@@ -30,6 +30,7 @@ def export():
     count=0
     for record in sorted((LOCAL/'records').glob('*.json')):
         row=json.loads(record.read_text())
+        if cohort and row.get('cohort_id')!=cohort:continue
         if not row.get('dispatch_intent_at') or 'grade' not in row:continue
         root=LOCAL/'runs'/row['run_id'];db=root/'profile/profiles/default/state/state.db'
         if not db.exists():continue
@@ -45,4 +46,6 @@ def export():
     print(json.dumps({'token_miser_receipt_exports':count,'model_calls':0}))
 
 
-if __name__=='__main__':export()
+if __name__=='__main__':
+    import argparse
+    p=argparse.ArgumentParser();p.add_argument('--cohort');export(p.parse_args().cohort)
