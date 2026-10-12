@@ -84,10 +84,12 @@ def build(protocol):
     pr = json.loads(Path(protocol).read_text())
     records = [json.loads(p.read_text()) for p in sorted((LOCAL/'records').glob('*.json'))]
     records = [r for r in records if r.get('cohort_id') == pr['cohort_id']]
+    zero_dispatch=[r for r in records if r.get('zero_dispatch_reconciliation')]
+    records=[r for r in records if r not in zero_dispatch]
     result = dict(schema_version=1, cohort_id=pr['cohort_id'], minimum_usd=3, maximum_usd=15,
                   selection='Complete OFF baseline cost in [3,15], without inspecting ON cost or either correctness outcome. All fixed task pairs remain listed; no outcomes are dropped from the primary report.',
                   billing='Common dated API-equivalent estimates for Codex Pro execution, not API charges.',
-                  models=summarize(records, pr['models']))
+                  models=summarize(records, pr['models']),zero_dispatch_infrastructure_attempts=zero_dispatch)
     dest = LOCAL/('report-'+pr['cohort_id']); dest.mkdir(exist_ok=True)
     (dest/'cost-band.json').write_text(json.dumps(result, indent=2)+'\n')
     deltas = token_deltas(records)

@@ -12,6 +12,8 @@ def build(protocol):
     component_count=len(pr['tasks'][0]['task_metadata']['workflow_components'])
     rows=[json.loads(p.read_text()) for p in sorted((LOCAL/'records').glob('*.json'))]
     rows=[r for r in rows if r.get('cohort_id')==pr['cohort_id']]
+    zero_dispatch=[r for r in rows if r.get('zero_dispatch_reconciliation')]
+    rows=[r for r in rows if r not in zero_dispatch]
     arms={}
     for row in rows:
         label='on' if row['cell']['token_miser'] else 'off'
@@ -41,7 +43,7 @@ def build(protocol):
                 uncertainty=f'One paired workflow. Its {component_count} components are correlated within each shared model thread and are not independent experiments. This is a descriptive result; no population-effect confidence interval is justified.',
                 comparability=f'New workflow of {component_count} features, separate from other cohorts and published leaderboards. Original component verifiers are unchanged.',
                 billing='Codex Pro usage, priced at the frozen standard API card for comparison. Not API-key charges or billing invoices. Reasoning is included in output.',
-                arms=arms,paired=paired,protocol=pr)
+                arms=arms,paired=paired,protocol=pr,zero_dispatch_infrastructure_attempts=zero_dispatch)
     dest=LOCAL/('report-'+pr['cohort_id']);dest.mkdir(exist_ok=True)
     (dest/'workflow.json').write_text(json.dumps(result,indent=2)+'\n')
     lines=['# Longer Sol workflow: Token Miser OFF/ON','',result['comparability'],'',result['billing'],'',

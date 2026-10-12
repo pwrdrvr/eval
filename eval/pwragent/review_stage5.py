@@ -19,7 +19,7 @@ def build():
     ledger = json.loads((LOCAL/'stage5-ledger.json').read_text())
     pause_path=LOCAL/'PAUSED_FOR_REVIEW.json'
     pause=json.loads(pause_path.read_text()) if pause_path.exists() else {}
-    finished=(workflow==final_workflow and len([r for r in records if r['cohort_id']==final_workflow and 'grade' in r])==2
+    finished=(workflow==final_workflow and len([r for r in records if r['cohort_id']==final_workflow and 'grade' in r and r.get('dispatch_intent_at')])==2
               and pause.get('completed_cohort')==final_workflow and not pause.get('authorized_protocol_sha256'))
     status='The authorized stage is complete and further evaluation is paused for review.' if finished else 'The stage remains in progress until the final twelve-feature pair is complete and the review gate is restored.'
     lines = ['# Token Miser evaluation: new $500 stage', '',
@@ -78,6 +78,7 @@ def build():
     measured=sum(r['accounting']['estimated_cost_usd'] for r in complete)
     partial=sum(r.get('accounting',{}).get('estimated_cost_usd') or 0 for r in records if r not in complete)
     lines += ['', '## Budget and coverage', '',
+              'One final-workflow startup attempt rejected a 36-hour input before runtime launch because the driver supports at most 24 hours. Empty profile/output/session directories, the exact validation error and source order prove zero model dispatch. That attempt is retained separately; both paid arms use the amended 24-hour allowance, without a token cap.', '',
               f"Complete trial/helper usage: **${measured:.6f}**, across {len(complete)} completed-usage records. Incomplete records, if any, retain their reservation and are not treated as zero.", '',
               f"Additional known usage from incomplete records: **${partial:.6f}**. One earlier small Sol ON helper was interrupted without final counters; its additional $90 allowance remains held. That allowance is conservative uncertainty, not a measured charge. Parent completion and grades were not changed.", '',
               f"Operator engineering usage observed through {overhead['captured_at']}: **${overhead['owner_measured_request_estimate_usd']:.6f}**, plus **${overhead.get('owner_reported_native_helper_cost_usd',0):.6f}** in separately retained native helpers. The active operator turn is not yet final. Jarvis evaluation-only uncertainty is bounded at $10, other helper uncertainty at $1, and the current/closing-response allowance is $40. These allowances are not measured spend.", '',
