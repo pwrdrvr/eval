@@ -304,4 +304,4 @@ its cost conclusions. Review files and sanitized receipts stay in ignored
 
 Validation on the current checkout and untouched base e837a70: existing Node
 suite33/40 passes in both, with the same seven historical report/skill failures.
-The current Python evaluator suite passes28/28. Protected instruction cases pass7/7.
+The current Python evaluator suite passes29/29. Protected instruction cases pass7/7.

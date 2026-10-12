@@ -18,6 +18,8 @@ def run_limits(protocol, task_metadata, model, protocol_hash=None):
         timeout = min(timeout, 1200)
     if timeout <= 0:
         raise ValueError('Positive benchmark agent timeout required')
+    if timeout > 86400:
+        raise ValueError('Frozen driver supports at most 24 hours; amend the protocol before admission')
     limits = {'timeoutMs': round(timeout * 1000)}
     cost_stop = protocol.get('observed_cost_stops_usd', {}).get(model)
     if cost_stop is not None:

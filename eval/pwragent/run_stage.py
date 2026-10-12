@@ -79,6 +79,9 @@ def execute(args):
             actual_image=docker('image','inspect',image['image'],'--format','{{.Id}}').stdout.strip()
             if image['image_id']!=expected_image or actual_image!=expected_image:
                 raise RuntimeError('Frozen task image changed before admission')
+        # Validate driver limits before reserving budget or preparing a run.
+        meta=task['task_metadata']
+        limits=run_limits(pr,meta,cell['model'],protocol_hash)
         reserve=pr['reservation_usd'][cell['model']]
         if cohort=='stage1' and index<4:
             pilot_used=sum(e['charged_micros']+e['reserved_micros'] for e in ledger.snapshot()['entries'] if e['run_id'].startswith('stage1-'))/1e6
@@ -90,7 +93,7 @@ def execute(args):
         ledger.export(ledger_json)
         meta=task['task_metadata']
         prompt=(source/'instruction.md').read_text()+"\n\nExecution constraints: Work only on this task. Do not launch subagents or other threads. Do not access external solutions, task verifier packages, unrelated host data, or benchmark artifacts. Passwordless sudo is available for task dependencies. Commit the task changes before finishing.\n"
-        inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',**run_limits(pr,meta,cell['model'],protocol_hash))
+        inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',**limits)
         portable=cohort!='stage1' or index>=4
         seccomp=pr.get('seccomp_profile')
         if seccomp and hashlib.sha256(Path(seccomp).read_bytes()).hexdigest()!=pr['seccomp_profile_sha256']:

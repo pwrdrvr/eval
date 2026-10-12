@@ -3,6 +3,11 @@ from run_limits import LEGACY_STAGE1, run_limits
 
 
 class ExecutionLimitTests(unittest.TestCase):
+    def test_unsupported_timeout_is_rejected_without_silent_shortening(self):
+        self.assertEqual(run_limits({}, {'agent':{'timeout_sec':86400}}, 'gpt-6.1-sol')['timeoutMs'],86400000)
+        with self.assertRaisesRegex(ValueError,'24 hours'):
+            run_limits({}, {'agent':{'timeout_sec':129600}}, 'gpt-6.1-sol')
+
     def test_new_cohort_keeps_benchmark_time_and_has_no_token_cutoff(self):
         limits = run_limits({}, {'agent': {'timeout_sec': 10800}}, 'gpt-6-astra')
         self.assertEqual(limits, {'timeoutMs': 10800000})
