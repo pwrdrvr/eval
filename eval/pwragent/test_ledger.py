@@ -3,10 +3,20 @@ import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 from pathlib import Path
-from ledger import Ledger
+from ledger import Ledger, ledger_paths
 
 
 class BudgetTests(unittest.TestCase):
+    def test_fresh_stage_does_not_charge_or_change_previous_ledger(self):
+        with tempfile.TemporaryDirectory() as d:
+            old=Ledger(ledger_paths(d,{})[0],500)
+            old.reserve('historical',400)
+            fresh=Ledger(ledger_paths(d,{'budget_ledger':'stage5-ledger'})[0],500)
+            fresh.reserve('new',100)
+            self.assertEqual(old.snapshot()['remaining_usd'],100)
+            self.assertEqual(fresh.snapshot()['remaining_usd'],400)
+            with self.assertRaises(ValueError): ledger_paths(d,{'budget_ledger':'../escape'})
+
     def test_review_pause_blocks_before_any_model_admission(self):
         import run_stage
         with tempfile.TemporaryDirectory() as d:

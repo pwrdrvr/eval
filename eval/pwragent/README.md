@@ -1,5 +1,41 @@
 # Bounded real PwrAgent paired evaluation
 
+## Newly authorized longer-thread cohort
+
+The user authorized a **new $500 stage starting now**, using their existing
+Codex Pro authentication only. `preregistered-long-threads.json` selects three
+substantial DeepSWE tasks: expression-language try/catch, JSON Schema references
+and dependencies, and LaTeX multicolumn layout. Each receives one OFF/ON pair
+for each exact requested model (12 cells). The published Codex/KimiK3 task costs
+were roughly $10–13; they are selection evidence, not promised Sol/Astra costs.
+Actual membership in the requested $3–15 range will be reported. Earlier cohorts
+remain separate and do not charge this new authorization.
+
+The cohort adopts corrected driverbeec8a6, has no cumulative-token cutoff, and
+retains each task's original10800-second allowance. Before dispatch, original
+verifiers must reject unchanged code and accept the reference solution in
+separate containers; no-turn PwrAgent checks exercise nested-directory export.
+The first real SolOFF cell is the complete pipeline acceptance check. Further
+cells use the fixed protocol and retain failures; model outputs are not repaired.
+The original DeepSWE committed-patch collector is used, so committed new files
+are included and uncommitted work remains outside the official submission.
+
+`stage5-ledger.sqlite/json` is independent of the historical ledger. It includes
+a $60 engineering/closeout hold, serial per-cell reservations of $90 for Sol and
+$120 for Astra, and a $30 observed app-catalog cost guard with conservative
+next-call headroom. Reservations are not spend. Subscription usage is priced
+with the dated standard API card for comparison; no API key or fallback is used.
+
+`usage_report.py --protocol eval/pwragent/preregistered-long-threads.json` writes
+CSV, JSON, and Markdown token breakdowns. Each run separates parent, Token Miser
+summary, and other helper usage: cached input, uncached input, cache writes,
+output, reasoning, and nonreasoning output, with dollar components. Reasoning
+is already included in output; cache writes are included in uncached input.
+Raw usage-line IDs support reconciliation. Account-wide Pro usage, including
+the user's concurrent work, is not attributed to this evaluation.
+
+The sections below retain historical cohorts and limitations.
+
 This evaluator runs the actual PwrAgent Electron application and its managed
 Codex App Server inside each task's isolated native arm64 container. It compares
 exact `gpt-6.1-sol` and `gpt-6-astra`, high reasoning/default service, with Token

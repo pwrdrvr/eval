@@ -5,6 +5,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+def ledger_paths(local, protocol):
+    """Explicit new authorizations use independent ledgers; history is immutable."""
+    name = protocol.get('budget_ledger', 'stage-ledger')
+    if not isinstance(name, str) or not name or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789-_' for c in name):
+        raise ValueError('Invalid budget ledger name')
+    return Path(local)/(name+'.sqlite'), Path(local)/(name+'.json')
+
+
 class Ledger:
     def __init__(self, path, ceiling_usd=250):
         Path(path).parent.mkdir(parents=True, exist_ok=True)

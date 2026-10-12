@@ -1,6 +1,7 @@
 """Serial local Docker task runtime. No Docker socket or verifier in agent."""
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -94,6 +95,20 @@ class Runtime:
             return {'status':'infra_invalid','exit_code':result.returncode,'success':None}
         value=float(reward.read_text().strip())
         return {'status':'graded' if value in (0,1) else 'infra_invalid','exit_code':result.returncode,'reward':value,'success':value==1 if value in (0,1) else None}
+
+    def collect_committed_patch(self, base):
+        """DeepSWE's declared submission is base..HEAD, including committed new files."""
+        if not re.fullmatch('[0-9a-f]{40}',base):
+            raise ValueError('Invalid pinned task base')
+        patch=docker('exec','--user',f'{os.getuid()}:{os.getgid()}',self.name,
+                     'git','-C','/app','diff','--binary',base,'HEAD').stdout
+        auth=json.loads(Path(self.auth).read_text())
+        secrets=[v for v in (auth.get('tokens') or {}).values() if isinstance(v,str) and len(v)>=8]
+        if any(secret in patch for secret in secrets):
+            raise RuntimeError('Credential detected in submission; artifact withheld')
+        target=self.root/'output/submission.patch'
+        target.write_text(patch);target.chmod(0o600)
+        return target
 
     def close(self):
         docker('rm','-f',self.name,check=False)

@@ -5,6 +5,13 @@ from pathlib import Path
 CARD=json.loads((Path(__file__).with_name('pricing-2026-10-11.json')).read_text())
 
 
+def cost_components(inp, cache, write, out, reasoning, rates):
+    return dict(uncached_input_excluding_writes=(inp-cache-write)*rates[0]/1e6,
+                cached_input=cache*rates[1]/1e6, cache_writes=write*rates[2]/1e6,
+                output_including_reasoning=out*rates[3]/1e6,
+                reasoning_subset=None if reasoning is None else reasoning*rates[3]/1e6)
+
+
 def parent_protocol_proof(result,events):
     """Require durable matching terminal and final provider counters."""
     terminal=False
@@ -79,15 +86,28 @@ def account(result,events=()):
         parent_row=(line.get('scope')=='turn' and line.get('threadId')==result.get('threadId') and line.get('turnId')==result.get('turnId') and line.get('turnUsageAttributed') is True)
         request_proven=bool(parent_row and requests and all(sum(r.get(k,0) for r in requests)==line.get(k,0) for k in ['inputTokens','cachedInputTokens','cacheWriteInputTokens','outputTokens','reasoningOutputTokens']))
         request_cost=None
+        components=cost_components(inp,cache,write,out,line.get('reasoningOutputTokens'),short) if exact_short else None
         if request_proven:
             request_cost=0
+            components=dict.fromkeys(['uncached_input_excluding_writes','cached_input','cache_writes','output_including_reasoning','reasoning_subset'],0)
             for request in requests:
                 r=short if request['inputTokens']<=CARD['long_context_threshold_input_tokens'] else long
                 i,c,w,o=(request.get(k,0) for k in ['inputTokens','cachedInputTokens','cacheWriteInputTokens','outputTokens'])
                 if c+w>i:raise ValueError('inconsistent provider request counters')
                 request_cost+=((i-c-w)*r[0]+c*r[1]+w*r[2]+o*r[3])/1e6
+                parts=cost_components(i,c,w,o,request.get('reasoningOutputTokens'),r)
+                for key,value in parts.items():
+                    components[key]=None if value is None or components[key] is None else components[key]+value
         rows.append(dict(usage_line_id=identity,model=model,scope=line.get('scope'),status=line.get('status'),protocol_reconciled=reconciled,service_tier=line.get('serviceTier'),input_tokens=inp,uncached_input_tokens=inp-cache,cached_input_tokens=cache,cache_write_tokens=write,output_tokens=out,reasoning_tokens=line.get('reasoningOutputTokens'),peak_context_tokens=context,provider_equivalent_cost_usd=line.get('totalCostMicros',0)/1e6,estimated_cost_usd=lower if exact_short else None,projected_short_usd=lower,projected_long_usd=upper,conservative_budget_usd=conservative,turn_usage_attributed=line.get('turnUsageAttributed')))
         rows[-1]['provider_requests']=requests if request_proven else []
+        source_item=line.get('sourceItemId') or ''
+        rows[-1]['usage_role']='token_miser_summary' if source_item.startswith('system:token-miser:') else ('parent' if parent_row else 'other_helper')
+        rows[-1]['source_item_id']=source_item
+        rows[-1]['estimated_cost_components_usd']=components
+        reason=line.get('reasoningOutputTokens')
+        if reason is not None and (not isinstance(reason,int) or reason<0 or reason>out):
+            raise ValueError('reasoning must be an output subset')
+        rows[-1]['nonreasoning_output_tokens']=None if reason is None else out-reason
         rows[-1]['provider_request_coverage_complete']=request_proven
         rows[-1]['reported_usage_only']=not (line.get('status')=='finalized' or reconciled)
         if request_cost is not None:rows[-1]['estimated_cost_usd']=request_cost

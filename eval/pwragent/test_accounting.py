@@ -20,6 +20,17 @@ class AccountingTests(unittest.TestCase):
         a=account({'dispatchIntentAt':'x','pricing':{'lines':[line()]}})
         self.assertTrue(a['usage_complete'])
         self.assertAlmostEqual(a['projected_cost_lower_usd'],(300*2+600*.1+100*2.5+200*10)/1e6)
+        p=a['rows'][0]['estimated_cost_components_usd']
+        self.assertAlmostEqual(sum(v for k,v in p.items() if k!='reasoning_subset'),a['estimated_cost_usd'])
+        self.assertEqual(a['rows'][0]['nonreasoning_output_tokens'],50)
+        self.assertEqual(p['reasoning_subset'],150*10/1e6)
+
+    def test_summary_usage_is_separate_from_other_helpers(self):
+        x=line(sourceItemId='system:token-miser:abc')
+        a=account({'pricing':{'lines':[x]}})['rows'][0]
+        self.assertEqual(a['usage_role'],'token_miser_summary')
+        x['reasoningOutputTokens']=201
+        with self.assertRaises(ValueError):account({'pricing':{'lines':[x]}})
 
     def test_duplicate_cumulative_rows_and_unpriced_helpers_fail_closed(self):
         with self.assertRaises(ValueError):account({'pricing':{'lines':[line(),line()]}})

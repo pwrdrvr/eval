@@ -6,7 +6,7 @@ from pathlib import Path
 import time
 from accounting import account
 from build_task import build_task
-from ledger import Ledger
+from ledger import Ledger, ledger_paths
 from runtime import LOCAL, ROOT, Runtime
 from run_limits import run_limits
 
@@ -25,11 +25,17 @@ def execute(args):
         if not protocol_hash or pause.get('authorized_protocol_sha256')!=protocol_hash:
             raise RuntimeError('Stage paused for explicit user review; no paid/subscription dispatch authorized')
     pr=json.loads(protocol.read_text())
+    if pr.get('frozen_before_paid_dispatch') is False:
+        raise RuntimeError('Draft protocol: freeze preparation evidence before dispatch')
     cohort=pr.get('cohort_id','stage1')
-    ledger=Ledger(LOCAL/'stage-ledger.sqlite',pr['stage_ceiling_usd'])
+    ledger_db,ledger_json=ledger_paths(LOCAL,pr)
+    ledger=Ledger(ledger_db,pr['stage_ceiling_usd'])
     tasks={t['id']:t for t in pr['tasks']}
     records=LOCAL/'records';records.mkdir(exist_ok=True)
     for index,cell in enumerate(pr['order']):
+        for file,expected in pr.get('harness_file_sha256',{}).items():
+            if hashlib.sha256((ROOT/file).read_bytes()).hexdigest()!=expected:
+                raise RuntimeError('Frozen evaluator implementation changed within cohort')
         if pr.get('driver_directory') and str((LOCAL/'cache/current-driver').resolve())!=pr['driver_directory']:
             raise RuntimeError('Frozen driver directory changed within cohort')
         for file,expected in pr.get('driver_file_sha256',{}).items():
@@ -67,6 +73,12 @@ def execute(args):
         if not build_json.exists():
             build_task(source,'fh-pwragent:8655446',image_name)
         image=json.loads(build_json.read_text())
+        expected_image=pr.get('task_image_ids',{}).get(cell['task'])
+        if expected_image:
+            from runtime import docker
+            actual_image=docker('image','inspect',image['image'],'--format','{{.Id}}').stdout.strip()
+            if image['image_id']!=expected_image or actual_image!=expected_image:
+                raise RuntimeError('Frozen task image changed before admission')
         reserve=pr['reservation_usd'][cell['model']]
         if cohort=='stage1' and index<4:
             pilot_used=sum(e['charged_micros']+e['reserved_micros'] for e in ledger.snapshot()['entries'] if e['run_id'].startswith('stage1-'))/1e6
@@ -75,7 +87,7 @@ def execute(args):
         try:ledger.reserve(run_id,reserve,'parent/helper + conservative next-call headroom')
         except ValueError as e:
             print(json.dumps({'event':'pause_budget_admission','run_id':run_id,'reason':str(e)}),flush=True);break
-        ledger.export(LOCAL/'stage-ledger.json')
+        ledger.export(ledger_json)
         meta=task['task_metadata']
         prompt=(source/'instruction.md').read_text()+"\n\nExecution constraints: Work only on this task. Do not launch subagents or other threads. Do not access external solutions, task verifier packages, unrelated host data, or benchmark artifacts. Passwordless sudo is available for task dependencies. Commit the task changes before finishing.\n"
         inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',**run_limits(pr,meta,cell['model'],protocol_hash))
@@ -106,7 +118,12 @@ def execute(args):
                 if task['suite'].startswith('terminal'):
                     row['grade']=rt.grade_terminal(source/'tests')
                 else:
-                    row['grade']=grade_deep(rt,source)
+                    submission=None
+                    if pr.get('canonical_committed_submission'):
+                        submission=rt.collect_committed_patch(meta['metadata']['base_commit_hash'])
+                        row['submission_sha256']=hashlib.sha256(submission.read_bytes()).hexdigest()
+                        row['submission_basis']='Original DeepSWE declared collector: git diff --binary base HEAD'
+                    row['grade']=grade_deep(rt,source,submission)
                 row['success']=row['grade'].get('success') if result['status']=='completed' else False
                 charged=row['accounting']['conservative_budget_usd']
                 family=(result.get('familyPricing') or {}).get('members',[])
@@ -121,10 +138,13 @@ def execute(args):
             row.update(infra_error=str(e),duration_seconds=time.monotonic()-began,success=None)
             # No automatic retry, no release without durable dispatch evidence.
             ledger.settle(run_id,0,'exception: full reservation retained',uncertain=True)
-            write(record_path,row);ledger.export(LOCAL/'stage-ledger.json');raise
+            write(record_path,row);ledger.export(ledger_json);raise
         finally:
             rt.close()
-        write(record_path,row);ledger.export(LOCAL/'stage-ledger.json')
+        write(record_path,row);ledger.export(ledger_json)
+        if pr.get('detailed_usage_report'):
+            from usage_report import build as build_usage
+            build_usage(protocol)
         print(json.dumps({'event':'result','run_id':run_id,'status':row['agent_status'],'grade':row['grade'],'cost':row.get('accounting'),'ledger_remaining_usd':ledger.snapshot()['remaining_usd']}),flush=True)
         if row['success'] is None or (uncertain and (not row.get('accounting',{}).get('rows') or row['accounting'].get('unpriced_models'))):
             print(json.dumps({'event':'pause_invalid_or_uncertain','run_id':run_id}),flush=True);break
@@ -138,9 +158,9 @@ def execute(args):
         write(LOCAL/'PAUSED_FOR_REVIEW.json',{'reason':'Authorized bounded cohort returned; further paid/subscription work requires explicit review','completed_cohort':cohort})
 
 
-def grade_deep(rt,source):
+def grade_deep(rt,source,submission=None):
     from runtime import docker,mount
-    patch=rt.root/'output/patch.diff'
+    patch=submission or rt.root/'output/patch.diff'
     if not patch.exists():
         return {'status':'infra_invalid','success':None,'reason':'missing exported patch'}
     name=rt.name+'-verifier'

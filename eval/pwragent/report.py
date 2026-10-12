@@ -6,6 +6,7 @@ import random
 import statistics
 import argparse
 from runtime import LOCAL,ROOT
+from ledger import ledger_paths
 
 
 def interval(values,seed=20261011):
@@ -40,11 +41,11 @@ def build(paused=False,protocol=None):
     records=[json.loads(f.read_text()) for f in sorted((LOCAL/'records').glob('*.json'))]
     selected_cohorts=pr.get('record_cohort_ids',[cohort])
     records=[r for r in records if r.get('cohort_id','stage1') in selected_cohorts]
-    summary={'schema_version':1,'cohort_id':cohort,'stage':'paused pending explicit review' if paused else 'collecting within bounded stage','preregistration':pr,'ledger':json.loads((LOCAL/'stage-ledger.json').read_text()),'models':{},'records':records}
+    summary={'schema_version':1,'cohort_id':cohort,'stage':'paused pending explicit review' if paused else 'collecting within bounded stage','preregistration':pr,'ledger':json.loads(ledger_paths(LOCAL,pr)[1].read_text()),'models':{},'records':records}
     summary['executed_suites']=sorted({r['task_suite'] for r in records if r.get('dispatch_intent_at')})
     summary['unexecuted_cells']=[c for c in summary['preregistration']['order'] if not any(r['cell']==c and r.get('dispatch_intent_at') for r in records)]
     summary['record_cohort_ids']=selected_cohorts
-    summary['overhead']={name:json.loads((LOCAL/name).read_text()) for name in ['overhead-snapshot.json','jarvis-overhead-snapshot.json'] if (LOCAL/name).exists()}
+    summary['overhead']={name:json.loads((LOCAL/name).read_text()) for name in pr.get('overhead_snapshot_files',['overhead-snapshot.json','jarvis-overhead-snapshot.json']) if (LOCAL/name).exists()}
     summary['raw_usage_totals']={k:sum(line.get(k,0) for r in records for line in r.get('accounting',{}).get('rows',[])) for k in ['input_tokens','uncached_input_tokens','cached_input_tokens','cache_write_tokens','output_tokens','reasoning_tokens']}
     summary['reported_task_cost_usd']=sum(r.get('accounting',{}).get('estimated_cost_usd',0) or 0 for r in records)
     for model in summary['preregistration']['models']:

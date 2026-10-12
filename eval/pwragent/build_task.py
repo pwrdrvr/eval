@@ -24,6 +24,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \\
     $(if apt-cache show libasound2t64 >/dev/null 2>&1; then echo libasound2t64; else echo libasound2; fi) \\
     && rm -rf /var/lib/apt/lists/*
 COPY --from=pwragent_payload /opt/pwragent/ /opt/pwragent/
+ENV COREPACK_HOME=/opt/task-corepack
+# The PwrAgent payload supplies Corepack shims. Cache the TASK's own pinned
+# manager before its offline verifier runs, also readable by the agent uid.
+RUN mkdir -p /opt/task-corepack \\
+    && if [ -f /app/package.json ] && node -e 'process.exit(JSON.parse(require("fs").readFileSync("/app/package.json")).packageManager ? 0 : 1)'; then corepack install; fi \\
+    && chmod -R a+rX /opt/task-corepack
 RUN mkdir -p /eval /app /logs/verifier && chmod 1777 /tmp \\
     && (getent passwd 501 >/dev/null || useradd -u 501 -g 20 -d /eval/profile/home -M pwreval) \\
     && echo 'pwreval ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/pwreval \\
