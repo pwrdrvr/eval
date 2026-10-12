@@ -37,5 +37,10 @@
     },
     "pilot_original_runtime": true,
     "main_batch_all_arms_same_portable_runtime": true
+  },
+  "eval_driver_cython_no_token_cap_stage": {
+    "source_commit": "0886647b24aaf612afdb67bf71c10f008f173707",
+    "preflight_result_sha256": "5fcbe5ff4335db653c798ea8e72bd3724cfa039842604d8c6f11cb43cc63146c",
+    "source_changes": "Lightweight budget reads, labeled IPC deadline and nonfinal usage snapshot retention; historical driver pins unchanged"
   }
 }

@@ -48,6 +48,38 @@ Future fixes should label deadline calls and persist explicitly last-observed,
 non-final usage before awaiting family reads. The frozen driver and original
 results are unchanged; missing final usage retains its full reservation.
 
+The user then rejected the pilot's arbitrary cumulative-token cutoff and
+requested admission based on published model task costs. The separate fresh
+four-cell Cython cohort is `preregistered-cython-no-token-cap.json`. New protocols
+have no default token stop or evaluator time clamp; this task keeps its published
+900-second agent allowance. Exact historical protocol hashes retain their former
+limits solely for reproduction. Cached input remains measured, rather than a
+reason to interrupt otherwise inexpensive useful work.
+
+[Vals' Terminal-Bench 4.0 cost table](https://www.vals.ai/benchmarks/terminal-bench-4)
+reports $1.72 per test for Sol and $9.58 for Astra with Mini-SWE-agent. Its tasks,
+harness and unspecified effort differ from this TB2.0 Cython fixture, so those
+figures support a roughly $23 four-cell planning proxy, not an exact task quote
+or causal baseline. The published KimiK3 Cython results in `results/eval-data.json`
+passed in all12 harness configurations; Codex's first-cold cost is $0.4190553 and
+duration389.34 seconds. No published requested-model Cython price was established.
+
+The unchanged inclusive ceiling is $500. Fresh task reservations are $20 per Sol
+and $65 per Astra, plus a $10 engineering hold; unused reservations are not spend.
+Observed app-catalog cost guards are $11/$24, leaving pessimistic full-context,
+maximum-output next-request/helper headroom within those envelopes. There is no
+token guard. A cost/time guard outcome remains visibly budget/time-limited, not
+an intrinsic model-code failure. All four fresh cells use the same guarded
+settings within each model pair, then restore the review pause. Historical
+Cython trials remain separate: three passed all11 original verifier checks,
+while Astra ON's global install was still in progress when interrupted and its
+verifier passed2/11; all four lacked completed agent outcomes.
+
+This cohort pins driver0886647b24aaf612afdb67bf71c10f008f173707 with lightweight
+parent/delegate budget reads, labeled IPC deadlines and retained explicitly
+nonfinal usage snapshots. Its actual no-turn Cython sandbox preflight passed;
+historical driver pins and results are unchanged.
+
 The disclosed secondary three-task rollup has Sol3/3 both modes, ON recorded
 cost1.65% lower (task bootstrap interval includes zero). AstraOFF3/3 andON2/3
 completion-gated, with one evaluator interruption; two unaffected model pairs

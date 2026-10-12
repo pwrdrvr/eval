@@ -8,6 +8,7 @@ from accounting import account
 from build_task import build_task
 from ledger import Ledger
 from runtime import LOCAL, ROOT, Runtime
+from run_limits import run_limits
 
 PREREG=ROOT/'eval/pwragent/preregistered-stage.json'
 
@@ -76,9 +77,8 @@ def execute(args):
             print(json.dumps({'event':'pause_budget_admission','run_id':run_id,'reason':str(e)}),flush=True);break
         ledger.export(LOCAL/'stage-ledger.json')
         meta=task['task_metadata']
-        timeout=min(float(meta.get('agent',{}).get('timeout_sec',900)),1200)
         prompt=(source/'instruction.md').read_text()+"\n\nExecution constraints: Work only on this task. Do not launch subagents or other threads. Do not access external solutions, task verifier packages, unrelated host data, or benchmark artifacts. Passwordless sudo is available for task dependencies. Commit the task changes before finishing.\n"
-        inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],timeoutMs=round(timeout*1000),runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',maxObservedCostUsd=pr['observed_cost_stops_usd'][cell['model']],maxObservedTokens=pr.get('inclusive_token_stop',750000))
+        inp=dict(schemaVersion=1,runId=run_id,cwd='/app',prompt=prompt,model=cell['model'],reasoningEffort=pr['reasoning_effort'],serviceTier=pr['service_tier'],tokenMiser=cell['token_miser'],runtimeManifest='/eval/runtime.json',profileDir='/eval/profile',codexHome='/eval/codex',**run_limits(pr,meta,cell['model'],protocol_hash))
         portable=cohort!='stage1' or index>=4
         seccomp=pr.get('seccomp_profile')
         if seccomp and hashlib.sha256(Path(seccomp).read_bytes()).hexdigest()!=pr['seccomp_profile_sha256']:
