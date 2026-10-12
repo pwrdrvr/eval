@@ -16,7 +16,13 @@ def parent_protocol_proof(result,events):
             continue
         if n.get('method')=='turn/completed' and p.get('turn',{}).get('status')=='completed':terminal=True
         if n.get('method')=='thread/tokenUsage/updated':final=p.get('tokenUsage',{}).get('total')
-    return final if terminal and result.get('status')=='completed' else None
+    # A graceful post-turn export error must not erase exact final usage
+    # evidence. Budget stops, interruptions and other failed lifecycle paths
+    # retain the conservative reservation. This never changes task success.
+    export_only_failure = (result.get('status')=='failed' and result.get('artifactError')
+                           and not result.get('error') and not result.get('stopReason')
+                           and result.get('cleanup')=='graceful')
+    return final if terminal and (result.get('status')=='completed' or export_only_failure) else None
 
 
 def account(result,events=()):

@@ -80,6 +80,20 @@ parent/delegate budget reads, labeled IPC deadlines and retained explicitly
 nonfinal usage snapshots. Its actual no-turn Cython sandbox preflight passed;
 historical driver pins and results are unchanged.
 
+The four fresh managed parent turns completed and each original verifier passed
+11/11. Common-card costs were SolOFF0.33021770/ON0.40067496 (+21.34%) and
+AstraOFF1.96473450/ON1.59570636 (-18.78%), total4.29133352USD. These are one-task
+descriptive pairs, not population estimates. All four frozen drivers failed
+after completion while exporting an untracked nested repository directory.
+Their raw statuses and strict primary failures remain visible; separate original
+provider-completion/verifier diagnostics show the code correctness result.
+No model or verifier was rerun and no model code was repaired. An export-only
+failure with graceful shutdown can retain complete cost coverage only when the
+exact completed provider terminal and final counters match; interruptions and
+budget stops keep their full uncertain reservations. This offline financial
+reconciliation does not change a grade or original driver result. The fresh
+batch finished and the review gate is paused again.
+
 The disclosed secondary three-task rollup has Sol3/3 both modes, ON recorded
 cost1.65% lower (task bootstrap interval includes zero). AstraOFF3/3 andON2/3
 completion-gated, with one evaluator interruption; two unaffected model pairs
@@ -191,4 +205,4 @@ its cost conclusions. Review files and sanitized receipts stay in ignored
 
 Validation on the current checkout and untouched base e837a70: existing Node
 suite33/40 passes in both, with the same seven historical report/skill failures.
-The separate evaluator suite passes13/13. Protected instruction cases pass7/7.
+The separate evaluator suite passes17/17. Protected instruction cases pass7/7.

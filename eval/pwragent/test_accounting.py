@@ -7,6 +7,15 @@ def line(**kw):
 
 
 class AccountingTests(unittest.TestCase):
+    def test_post_turn_export_failure_retains_proven_final_usage(self):
+        x=line();x.update(status='pending',scope='turn',threadId='thread',turnId='turn',turnUsageAttributed=True)
+        result={'dispatchIntentAt':'x','threadId':'thread','turnId':'turn','status':'failed','artifactError':'Unsupported artifact file type','cleanup':'graceful','pricing':{'lines':[x]}}
+        events=[{'notification':{'method':'thread/tokenUsage/updated','params':{'threadId':'thread','turnId':'turn','tokenUsage':{'total':{k:x[k] for k in ['inputTokens','cachedInputTokens','outputTokens','reasoningOutputTokens']}}}}}, {'notification':{'method':'turn/completed','params':{'threadId':'thread','turnId':'turn','turn':{'status':'completed'}}}}]
+        self.assertTrue(account(result,events)['usage_complete'])
+        self.assertEqual(result['status'],'failed')
+        events[-1]['notification']['params']['turn']['status']='interrupted'
+        self.assertFalse(account(result,events)['usage_complete'])
+
     def test_reasoning_and_cache_writes_are_subsets_not_double_counted(self):
         a=account({'dispatchIntentAt':'x','pricing':{'lines':[line()]}})
         self.assertTrue(a['usage_complete'])
