@@ -130,6 +130,12 @@ def execute(args):
                     for missing in row['accounting']['missing_usage']+coverage['unresolved_dispatches']:
                         if missing.get('model') not in CARD['models']:
                             row['accounting']['unpriced_models'].append(missing.get('model') or 'unknown_dispatched_model')
+                # Native context-compaction requests can be absent from the
+                # App Server display ledger. Reconcile before settling the
+                # reservation; unknown native requests fail closed.
+                from native_request_reconciliation import inspect as inspect_native, add_native_usage
+                native_base,native_proof=inspect_native(row)
+                add_native_usage(row,native_base,native_proof)
                 row['token_miser_usage']=result.get('tokenMiserUsage')
                 row['tool_accounting']=result.get('toolAccounting')
                 row['family_pricing']=result.get('familyPricing')

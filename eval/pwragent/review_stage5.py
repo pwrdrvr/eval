@@ -26,6 +26,7 @@ def build():
              'Generated '+datetime.datetime.now(datetime.timezone.utc).isoformat()+'. '+status, '',
              'All dollars below are standard-card API-equivalent estimates of Codex Pro usage, not API-key charges or invoices. The account-wide usage of the user’s other Codex work is excluded.', '',
              '## Results', '',
+             'Completed comparisons: Astra scored the same with Token Miser and cost 0.47% more across three paired tasks. The completed six-feature Sol pair scored higher and cost 5.50% less, but both arms were below $3. The final larger Sol comparison was interrupted by provider capacity and does not establish a complete cost effect.', '',
              '| Model and workload | OFF score | ON score | OFF cost | ON cost | Scope |',
              '|---|---:|---:|---:|---:|---|']
     astra = [r for r in records if r['cohort_id']==fixed and r['cell']['model']=='gpt-6-astra']
@@ -58,9 +59,9 @@ def build():
             detail=row['grade']['details'];label='ON' if row['cell']['token_miser'] else 'OFF'
             lines += ['', f"Sol {label}: {detail['f2p_passed']}/{detail['f2p_total']} required new checks and {detail['p2p_passed']}/{detail['p2p_total']} regression checks passed; agent status {row['agent_status']}."]
     lines += ['', 'Astra: observed score unchanged at 2/3, cost +0.46596%. The paired mean cost change is +$0.01765/task; the empirical task-bootstrap 95% interval is −$0.29793 to +$0.24523/task. Three selected tasks are too few for a reliable population conclusion. Zero discordant grades does not establish equal model performance.', '',
-              'The earlier six-feature Sol OFF baseline cost $2.222511, below the requested $3 floor. Its ON cost was $2.170410 (−2.34%) and its feature score rose from 2/6 to 3/6, with complete usage. The earlier three single-task Sol baselines were only $0.59–0.75; reported ON cost was at least 14.63% higher, with one unreported interrupted Luna helper still unknown. Neither earlier cohort is silently presented as a $3–15 Sol sample. Before the six-feature ON result, one final workload of twelve distinct features was selected; its price-band membership is determined by its complete OFF cost.', '',
+              'The earlier six-feature Sol OFF baseline cost $2.296652, below the requested $3 floor. Its ON cost was $2.170410 (−5.50%) and its feature score rose from 2/6 to 3/6, with complete usage. The earlier three single-task Sol baselines were only $0.59–0.75; reported ON cost was at least 14.63% higher, with one unreported interrupted Luna helper still unknown. Neither earlier cohort is silently presented as a $3–15 Sol sample. Before the six-feature ON result, one final workload of twelve distinct features was selected; its price-band membership is determined by its complete OFF cost.', '',
               flow['uncertainty'], '', '## Measured tokens', '',
-              'Cumulative counts across provider requests. Reasoning is a subset of output and is priced once. Uncached input includes any cache writes; the CSVs also separate cache writes and nonreasoning output.', '',
+              'Cumulative counts across provider requests. Reasoning is a subset of output and is priced once. Uncached input includes any cache writes; the CSVs also separate cache writes and nonreasoning output. Native Codex compaction has its own row, separate from Token Miser summaries. An audit of all sixteen native parent sessions found three compaction requests omitted by the App Server pricing snapshot; all are included here and in the conservative ledger. This corrects the earlier six-feature OFF estimate from $2.222511 to $2.296652; its ON cost is unchanged.', '',
               '| Model/workload | Mode | Usage role/model | Cached input | Uncached input | Output | Reasoning subset | Estimated cost |',
               '|---|---|---|---:|---:|---:|---:|---:|']
     grouped = defaultdict(lambda: defaultdict(float))
@@ -80,10 +81,12 @@ def build():
     complete=[r for r in records if r.get('accounting',{}).get('usage_complete')]
     measured=sum(r['accounting']['estimated_cost_usd'] for r in complete)
     partial=sum(r.get('accounting',{}).get('estimated_cost_usd') or 0 for r in records if r not in complete)
+    failed_usage_holds=sum(e['charged_micros'] for e in ledger['entries'] if e['status']=='uncertain')/1e6
     lines += ['', '## Budget and coverage', '',
               'One final-workflow startup attempt rejected a 36-hour input before runtime launch because the driver supports at most 24 hours. Empty profile/output/session directories, the exact validation error and source order prove zero model dispatch. That attempt is retained separately; both paid arms use the amended 24-hour allowance, without a token cap.', '',
               f"Complete trial/helper usage: **${measured:.6f}**, across {len(complete)} completed-usage records. Incomplete records, if any, retain their reservation and are not treated as zero.", '',
               f"Additional known usage from incomplete records: **${partial:.6f}**. One earlier small Sol ON helper was interrupted without final counters; its additional $90 allowance remains held. That allowance is conservative uncertainty, not a measured charge. Parent completion and grades were not changed.", '',
+              f"Failed-turn uncertainty envelopes retained in the ledger: **${failed_usage_holds:.2f}**, in addition to the separate $90 helper allowance. The failed Sol parent has late, reconciled request receipts in its record, but those do not prove that every failed/retried provider request had no additional cost. No uncertainty envelope was released on that assumption.", '',
               f"Operator engineering usage observed through {overhead['captured_at']}: **${overhead['owner_measured_request_estimate_usd']:.6f}**, plus **${overhead.get('owner_reported_native_helper_cost_usd',0):.6f}** in separately retained native helpers. The active operator turn is not yet final. Jarvis evaluation-only uncertainty is bounded at $10, other helper uncertainty at $1, and the current/closing-response allowance is ${overhead['current_or_next_response_headroom_usd']}. These allowances are not measured spend.", '',
               f"Conservative admission ledger: ${ledger['charged_usd']:.6f} charged against reservations, ${ledger['reserved_usd']:.6f} still reserved, ${ledger['remaining_usd']:.6f} available under the new $500 ceiling. Settled trial charges use conservative rate bounds and can exceed the complete common-card estimate above. Engineering holds include unused future-work allowance; they are not bills.", '',
               '## Validity and limitations', '',
@@ -102,12 +105,17 @@ def build():
         ('Larger Sol token CSV',LOCAL/('report-'+workflow)/'token-breakdown.csv'),
         ('Astra and cheap Sol paired token deltas',LOCAL/('report-'+fixed)/'paired-token-deltas.csv'),
         ('Larger Sol paired token deltas',LOCAL/('report-'+workflow)/'paired-token-deltas.csv'),
+        ('Real Token Miser transformation examples',LOCAL/('report-'+workflow)/'transformation-evidence.json'),
+        ('Provider duration versus full evaluator duration',LOCAL/('report-'+workflow)/'latency.csv'),
         ('Separate six-feature workflow result',LOCAL/('report-'+small_workflow)/'workflow.json'),
         ('Every provider dispatch and usage reconciliation',LOCAL/'stage5-protocol-usage-audit.json'),
+        ('Native requests and compaction reconciliation',LOCAL/'stage5-native-request-audit.json'),
+        ('Exact OFF provider capacity error',LOCAL/'runs/stage5-final-sol-workflow-01-twelve-feature-workflow-sol-off-infra-retry1/output/provider-failure-receipt.json'),
         ('Explicit missing usage',LOCAL/('report-'+fixed)/'missing-usage.json'),
         ('Budget ledger',LOCAL/'stage5-ledger.json'),
         ('Scoped engineering receipt',LOCAL/'stage5-engineering-receipt.json'),
-        ('Scoped engineering helper receipt',LOCAL/'stage5-engineering-helper-receipt.json')]:
+        ('Scoped engineering helper receipt',LOCAL/'stage5-engineering-helper-receipt.json'),
+        ('Engineering response-headroom basis',LOCAL/'stage5-engineering-headroom-proof.json')]:
         lines.append(f'- [{title}]({path})')
     lines+=['', 'Source: [draft harness PR](https://github.com/frontier-harness-eval/eval/pull/26), [headless driver PR](https://github.com/pwrdrvr/PwrAgent/pull/2707). [Official pricing](https://developers.openai.com/api/docs/pricing) was frozen in the dated repository price card. No merge/release or public agent-patch publication.', '']
     output=LOCAL/'REVIEW-stage5.md';output.write_text('\n'.join(lines))

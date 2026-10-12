@@ -53,8 +53,9 @@ The original six three-hour allowances are added together; no cumulative-token
 cap is imposed. The pair shares the same new-stage $500 ledger.
 `workflow_report.py` exports its separate results and token breakdowns.
 
-Its completed OFF baseline cost $2.222511, still below the requested $3 floor.
-The paired ON completed at $2.170410 (−2.34%); feature score rose from 2/6 to 3/6.
+Its completed OFF baseline cost $2.296652, still below the requested $3 floor.
+The paired ON completed at $2.170410 (−5.50%); feature score rose from 2/6 to 3/6.
+These corrected totals include native Codex compaction, which was absent from the app pricing snapshot used during selection; the OFF baseline remains below $3.
 Both workflow arms have complete provider/helper counters. This is descriptive
 evidence from one pair, separate from the requested price-band sample.
 Before ON finished, `preregistered-final-workflow-plan.json` prospectively
@@ -67,6 +68,27 @@ before a final protocol and images are frozen. There is no token or spend
 padding, and no repeated attempt until a target price is reached. After that
 one additional pair the stage pauses for review, even if it also misses the
 price band. All three current-stage cohorts remain separate.
+
+The final twelve-feature cohort is finished and paused for review. Its OFF
+parent failed with provider `serverOverloaded` after 65 minutes, independently
+of the harness; the committed submission passed 6/12 feature verifiers and all
+139,072 regression checks. ON completed, passed 5/12 feature verifiers and
+138,874/139,072 regression checks, and cost $2.987219 including all helpers and
+native compaction. OFF has $2.829932 of known partial usage and retains its full
+$90 uncertainty envelope. This is not a completed causal cost pair, and neither
+arm establishes the requested completed $3–15 Sol baseline. No further trial
+was launched. A zero-dispatch 36-hour input validation failure is retained;
+the two actual arms used the prospective 24-hour amendment in
+`preregistered-final-sol-workflow-v2.json`.
+
+`native_request_reconciliation.py` audits each native response against the
+App Server request ledger. It identified three additional context-compaction
+requests across sixteen trial attempts, using the exact managed source model
+path and native compaction events. These requests have separate `codex_compaction`
+rows; Token Miser's Luna summaries stay separate. Future execution reconciles
+native requests before settling each reservation; the finished cohorts retain
+their original execution-source hashes. No helper or failed-turn
+uncertainty was released. The audit leaves raw outputs and grades unchanged.
 
 The sections below retain historical cohorts and limitations.
 
@@ -282,4 +304,4 @@ its cost conclusions. Review files and sanitized receipts stay in ignored
 
 Validation on the current checkout and untouched base e837a70: existing Node
 suite33/40 passes in both, with the same seven historical report/skill failures.
-The separate evaluator suite passes17/17. Protected instruction cases pass7/7.
+The current Python evaluator suite passes28/28. Protected instruction cases pass7/7.
