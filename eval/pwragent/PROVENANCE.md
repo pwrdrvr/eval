@@ -7,7 +7,7 @@ read only, individually, into fresh Codex state; an expired login fails closed.
 
 The historical FrontierHarness v1.0 results used Kimi K3, Terminal-Bench 2.1 and
 DeepSWE. The Terminal-Bench 2.1 repository/registry could not be resolved on
-2026-10-11. This study uses verified available Terminal-Bench 2.0 sources at
+2026-10-11. Historical cohorts use available Terminal-Bench 2.0 sources at
 69671fbaac6d67a7ef0dfec016cc38a64ef7a77c plus pinned public DeepSWE task packages.
 This is an explicitly different task/runtime/model configuration, with no
 leaderboard comparability claimed. Correctness uses the original task verifier
@@ -23,15 +23,20 @@ degenerate tool output or missing interception telemetry. Tokens are absent
 from that legacy cost cohort, so it cannot be repriced reliably. Twelve host
 control calibrations have no paired treatment. These are historical auxiliary
 evidence, not new Sol/Astra efficacy results. The current repo's documented
-adapter drives PwrAgent; standalone Codex implementation provenance remains
-under investigation and must not be inferred from this repo's name.
+adapter drives PwrAgent. The standalone Codex implementation search ended
+without confirmed provenance; that architecture must not be inferred from
+this repository's name.
 
-The user superseded the earlier $2500 authorization with a current-stage $250
-ceiling and mandatory review pause. That cap applies to conservative
-API-equivalent cost on the existing Codex subscription, including parent,
-helper, retry and orchestration reserves. No new cloud compute is provisioned.
-Outstanding/unknown dispatch usage retains its full reservation. Runs are
-serial. No automatic paid retry or batch beyond this stage is authorized.
+Historical authorizations were reduced from $2500 to $250, then raised to a
+cumulative $500 with review pauses between bounded cohorts. On October 12 the
+user authorized a separate new $500 stage, using existing Codex Pro account
+authentication only. Its ledger includes parent, helper and orchestration
+usage; unused reservations are not spend. No API-key fallback or paid cloud
+compute is used. Outstanding/unknown dispatch usage retains its reservation.
+Runs are serial. The current stage uses pinned public DeepSWE packages; the
+fixed single-task cohort and the subsequent six-feature Sol workflow have
+separate preregistrations, metrics and reports. They are not silently pooled.
+The workflow's two arms are followed by a review pause, not automatic expansion.
 
 ## Protected instruction provenance
 

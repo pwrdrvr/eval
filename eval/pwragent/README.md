@@ -8,20 +8,23 @@ substantial DeepSWE tasks: expression-language try/catch, JSON Schema references
 and dependencies, and LaTeX multicolumn layout. Each receives one OFF/ON pair
 for each exact requested model (12 cells). The published Codex/KimiK3 task costs
 were roughly $10–13; they are selection evidence, not promised Sol/Astra costs.
-Actual membership in the requested $3–15 range will be reported. Earlier cohorts
+Actual membership in the requested $3–15 range is reported. Earlier cohorts
 remain separate and do not charge this new authorization.
 
-The cohort adopts corrected driverbeec8a6, has no cumulative-token cutoff, and
-retains each task's original10800-second allowance. Before dispatch, original
-verifiers must reject unchanged code and accept the reference solution in
-separate containers; no-turn PwrAgent checks exercise nested-directory export.
-The first real SolOFF cell is the complete pipeline acceptance check. Further
-cells use the fixed protocol and retain failures; model outputs are not repaired.
+The cohort adopts corrected driver beec8a6, has no cumulative-token cutoff, and
+retains each task's original 10800-second allowance. Before dispatch, original
+verifiers rejected unchanged code and accepted the reference solution in
+separate containers; no-turn PwrAgent checks exercised nested-directory export.
+All 12 cells completed with valid grading and complete usage. Each model passed
+two of three tasks in both modes. Astra's three OFF baselines cost $3.52–4.07;
+its paired aggregate ON cost was 0.47% higher. Sol's baselines cost $0.59–0.75,
+so those results do not answer the user's requested larger-thread question.
+Model outputs are not repaired.
 The original DeepSWE committed-patch collector is used, so committed new files
 are included and uncommitted work remains outside the official submission.
 
 `stage5-ledger.sqlite/json` is independent of the historical ledger. It includes
-a $60 engineering/closeout hold, serial per-cell reservations of $90 for Sol and
+explicit engineering/closeout holds, serial per-cell reservations of $90 for Sol and
 $120 for Astra, and a $30 observed app-catalog cost guard with conservative
 next-call headroom. Reservations are not spend. Subscription usage is priced
 with the dated standard API card for comparison; no API key or fallback is used.
@@ -33,6 +36,19 @@ output, reasoning, and nonreasoning output, with dollar components. Reasoning
 is already included in output; cache writes are included in uncached input.
 Raw usage-line IDs support reconciliation. Account-wide Pro usage, including
 the user's concurrent work, is not attributed to this evaluation.
+
+`preregistered-sol-workflow.json` records a separate, conditional extension:
+one Sol OFF/ON pair completing six public DeepSWE features in a shared thread.
+The extension was planned before the last fixed-cohort Sol results, conditional
+on all three Sol OFF costs remaining below $3. All six original component
+verifiers and reference solutions passed the necessary zero-model checks,
+including a combined patch export and grading check. Primary correctness is
+the equal-weight fraction of six verified features; complete all-feature success
+is secondary. One workflow pair is the statistical unit, not six independent
+trials. Both arms share the original task contents, prompts, image and limits.
+The original six three-hour allowances are added together; no cumulative-token
+cap is imposed. The pair shares the same new-stage $500 ledger, then pauses for
+review. `workflow_report.py` exports its separate results and token breakdowns.
 
 The sections below retain historical cohorts and limitations.
 
