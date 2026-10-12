@@ -179,7 +179,7 @@ reconciled with the matching completed event and exact provider counters.
 The inclusive approved cumulative ceiling is **$500**, including orchestration,
 subscription API-equivalent usage, helper calls and retries. API credit billing
 is not verified; subscription execution is not assigned zero economic cost.
-There is $95 held engineering allowance, serial concurrency, conservative
+There is $165 held engineering allowance, serial concurrency, conservative
 next-call reservations and per-task observed stops. Stops are post-request,
 not provider billing caps; reservations cover in-flight uncertainty. Final stage
 completion pauses further paid/subscription eval work for explicit user review.
