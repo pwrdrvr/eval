@@ -36,6 +36,18 @@ The exact saved unfinished code, including its separately exported new module,
 passed all hidden checks in a post hoc offline diagnostic without code edits or
 new model calls. This is separate from successful agent completion.
 
+Offline protocol analysis found repeated full-history hydration during budget
+polling: 1,009 `thread/read` and 1,009 `thread/turns/list` requests. Near the
+interruption, a history-read sequence spanned at least 31.985 seconds, exceeding
+the driver's 30-second IPC deadline. The deadline error did not name its method,
+so this is strong attribution rather than a proven causal diagnosis or a
+Token Miser-specific failure. The existing IPC `includeTurns:false` path skips
+history hydration while still returning live-ledger pricing and pending requests;
+its live parent/helper freshness must be verified before a new driver adopts it.
+Future fixes should label deadline calls and persist explicitly last-observed,
+non-final usage before awaiting family reads. The frozen driver and original
+results are unchanged; missing final usage retains its full reservation.
+
 The disclosed secondary three-task rollup has Sol3/3 both modes, ON recorded
 cost1.65% lower (task bootstrap interval includes zero). AstraOFF3/3 andON2/3
 completion-gated, with one evaluator interruption; two unaffected model pairs
