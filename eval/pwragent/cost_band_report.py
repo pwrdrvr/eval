@@ -1,11 +1,39 @@
 """Describe the preregistered baseline-cost band without discarding other pairs."""
 import argparse
+import csv
 import json
 from pathlib import Path
 import statistics
 
 from report import interval
 from runtime import LOCAL
+from usage_report import breakdown, TOKEN_KEYS, COST_KEYS
+
+
+def token_deltas(records):
+    groups = breakdown(records)
+    tasks = {}
+    for group in groups:
+        key = (group['requested_model'], group['task'], group['usage_role'], group['usage_model'])
+        tasks.setdefault(key, {})[group['token_miser']] = group
+    rows = []
+    for (model, task, role, usage_model), arms in sorted(tasks.items()):
+        # A helper absent in an arm has zero use only if that entire run has
+        # complete accounting. Missing or incomplete attempts stay unknown.
+        complete = {arm: any(r['cell']['task'] == task and r['cell']['model'] == model
+                            and r['cell']['token_miser'] == arm
+                            and r.get('accounting', {}).get('usage_complete') for r in records)
+                    for arm in [False, True]}
+        row = dict(model=model, task=task, role=role, usage_model=usage_model,
+                   complete_pair=all(complete.values()))
+        keys = [*TOKEN_KEYS, 'estimated_cost_usd', *[k+'_usd' for k in COST_KEYS]]
+        for key in keys:
+            off = arms.get(False, {}).get(key, 0) if complete[False] else None
+            on = arms.get(True, {}).get(key, 0) if complete[True] else None
+            row['off_'+key] = off; row['on_'+key] = on
+            row['delta_'+key] = on-off if on is not None and off is not None else None
+        rows.append(row)
+    return rows
 
 
 def summarize(records, models, minimum=3, maximum=15):
@@ -62,6 +90,12 @@ def build(protocol):
                   models=summarize(records, pr['models']))
     dest = LOCAL/('report-'+pr['cohort_id']); dest.mkdir(exist_ok=True)
     (dest/'cost-band.json').write_text(json.dumps(result, indent=2)+'\n')
+    deltas = token_deltas(records)
+    (dest/'paired-token-deltas.json').write_text(json.dumps(deltas, indent=2)+'\n')
+    if deltas:
+        with (dest/'paired-token-deltas.csv').open('w', newline='') as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(deltas[0]))
+            writer.writeheader(); writer.writerows(deltas)
     lines = ['# Requested $3–15 baseline band', '', result['selection'], '', result['billing'], '',
              '| Model | Task | OFF $ | ON $ | OFF pass | ON pass | OFF in band |',
              '|---|---|---:|---:|---|---|---|']
