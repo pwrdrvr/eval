@@ -123,7 +123,12 @@ def execute(args):
                         submission=rt.collect_committed_patch(meta['metadata']['base_commit_hash'])
                         row['submission_sha256']=hashlib.sha256(submission.read_bytes()).hexdigest()
                         row['submission_basis']='Original DeepSWE declared collector: git diff --binary base HEAD'
-                    row['grade']=grade_deep(rt,source,submission)
+                    if meta.get('workflow_components'):
+                        from workflow import grade_workflow
+                        row['submission_basis']='Committed workflow root diff; original per-component diffs graded separately'
+                        row['grade']=grade_workflow(rt,meta)
+                    else:
+                        row['grade']=grade_deep(rt,source,submission)
                 row['success']=row['grade'].get('success') if result['status']=='completed' else False
                 charged=row['accounting']['conservative_budget_usd']
                 family=(result.get('familyPricing') or {}).get('members',[])
