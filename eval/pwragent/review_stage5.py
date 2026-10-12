@@ -40,7 +40,8 @@ def build():
     def workflow_arm(label):
         arm = arms.get(label)
         if not arm or arm.get('primary_score') is None:return 'pending','pending'
-        return f"{arm['component_passes']}/{arm['component_count']} features", f"${arm['reported_cost_usd']:.6f}" if arm['reported_cost_usd'] is not None else 'unknown'
+        cost=f"${arm['reported_cost_usd']:.6f}"+(' partial' if not arm['complete_usage'] else '') if arm['reported_cost_usd'] is not None else 'unknown'
+        return f"{arm['component_passes']}/{arm['component_count']} features ({arm['agent_status']})", cost
     so, sc = workflow_arm('off'); sn, snc = workflow_arm('on')
     count=len(flow['protocol']['tasks'][0]['task_metadata']['workflow_components'])
     lines.append(f'| Sol: one workflow of {count} features | {so} | {sn} | {sc} | {snc} | One paired workflow; components are correlated |')
@@ -48,8 +49,10 @@ def build():
     if 'cost_change_fraction' in paired:
         lines += ['', f"Sol workflow: observed ON-minus-OFF feature score change {paired['score_delta_on_minus_off']:+.1%}; estimated cost change {paired['cost_change_fraction']:+.2%}. This describes one pair only."]
     off_cost=arms.get('off',{}).get('reported_cost_usd')
-    if off_cost is not None:
+    if off_cost is not None and arms.get('off',{}).get('complete_usage'):
         lines += ['', f"This Sol OFF baseline is {'inside' if 3<=off_cost<=15 else 'outside'} the requested $3–15 range (${off_cost:.6f}). Selection is not expanded further after this pair."]
+    if any(a['agent_status'] not in (None,'completed') for a in arms.values()):
+        lines+=['','The final larger Sol attempt suffered a provider capacity failure (`serverOverloaded` after HTTP503), with successful harness export and grading. It is retained as an incomplete attempt. Its cost-band membership and ON/OFF cost effect remain unknown; any submitted-code score difference is confounded by the provider failure. No completed $3–15 Sol pair has been established. The completed six-feature result below remains separate.']
     for row in records:
         if row['cohort_id'] == workflow and row.get('grade',{}).get('details'):
             detail=row['grade']['details'];label='ON' if row['cell']['token_miser'] else 'OFF'
@@ -81,7 +84,7 @@ def build():
               'One final-workflow startup attempt rejected a 36-hour input before runtime launch because the driver supports at most 24 hours. Empty profile/output/session directories, the exact validation error and source order prove zero model dispatch. That attempt is retained separately; both paid arms use the amended 24-hour allowance, without a token cap.', '',
               f"Complete trial/helper usage: **${measured:.6f}**, across {len(complete)} completed-usage records. Incomplete records, if any, retain their reservation and are not treated as zero.", '',
               f"Additional known usage from incomplete records: **${partial:.6f}**. One earlier small Sol ON helper was interrupted without final counters; its additional $90 allowance remains held. That allowance is conservative uncertainty, not a measured charge. Parent completion and grades were not changed.", '',
-              f"Operator engineering usage observed through {overhead['captured_at']}: **${overhead['owner_measured_request_estimate_usd']:.6f}**, plus **${overhead.get('owner_reported_native_helper_cost_usd',0):.6f}** in separately retained native helpers. The active operator turn is not yet final. Jarvis evaluation-only uncertainty is bounded at $10, other helper uncertainty at $1, and the current/closing-response allowance is $40. These allowances are not measured spend.", '',
+              f"Operator engineering usage observed through {overhead['captured_at']}: **${overhead['owner_measured_request_estimate_usd']:.6f}**, plus **${overhead.get('owner_reported_native_helper_cost_usd',0):.6f}** in separately retained native helpers. The active operator turn is not yet final. Jarvis evaluation-only uncertainty is bounded at $10, other helper uncertainty at $1, and the current/closing-response allowance is ${overhead['current_or_next_response_headroom_usd']}. These allowances are not measured spend.", '',
               f"Conservative admission ledger: ${ledger['charged_usd']:.6f} charged against reservations, ${ledger['reserved_usd']:.6f} still reserved, ${ledger['remaining_usd']:.6f} available under the new $500 ceiling. Settled trial charges use conservative rate bounds and can exceed the complete common-card estimate above. Engineering holds include unused future-work allowance; they are not bills.", '',
               '## Validity and limitations', '',
               '- Exact requested model IDs; high reasoning, default service and fast mode off. Account/read receipts verify ChatGPT Pro, and client thread/turn receipts clear the tier override. They do not prove an upstream invoice tier. No API-key fallback was admitted.',

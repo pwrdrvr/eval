@@ -35,6 +35,7 @@ def build(protocol):
     if set(arms)=={'off','on'}:
         off,on=arms['off'],arms['on'];scores=[off['primary_score'],on['primary_score']]
         paired['thread_pairs_with_valid_score']=int(all(x is not None for x in scores))
+        paired['normally_completed_pairs']=int(off['agent_status']=='completed' and on['agent_status']=='completed')
         paired['score_delta_on_minus_off']=scores[1]-scores[0] if all(x is not None for x in scores) else None
         if off['complete_usage'] and on['complete_usage']:
             paired['cost_delta_on_minus_off_usd']=on['reported_cost_usd']-off['reported_cost_usd']
@@ -53,7 +54,10 @@ def build(protocol):
         arm=arms.get(label,{})
         score=arm.get('primary_score');cost=arm.get('reported_cost_usd');per=arm.get('cost_per_verified_feature_usd')
         passed=arm.get('component_passes');whole=arm.get('whole_thread_success')
-        lines.append('| '+label.upper()+' | '+(str(passed) if passed is not None else 'pending')+'/'+str(arm.get('component_count') or component_count)+' | '+(f'{score:.1%}' if score is not None else 'pending')+' | '+(str(whole) if whole is not None else 'pending')+' | '+(f'${cost:.4f}' if cost is not None else 'unknown/pending')+' | '+(f'${per:.4f}' if per is not None else 'undefined/pending')+' |')
+        cost_text=(f'${cost:.4f}'+(' (partial)' if not arm.get('complete_usage') else '')) if cost is not None else 'unknown/pending'
+        lines.append('| '+label.upper()+' | '+(str(passed) if passed is not None else 'pending')+'/'+str(arm.get('component_count') or component_count)+' | '+(f'{score:.1%}' if score is not None else 'pending')+' | '+(str(whole) if whole is not None else 'pending')+' | '+cost_text+' | '+(f'${per:.4f}' if per is not None else 'undefined/pending')+' |')
+    if any(a['agent_status'] not in (None,'completed') for a in arms.values()):
+        lines+=['','At least one parent failed or was interrupted. Its submitted-code grade is retained, but the realized score difference is confounded by incomplete execution. This is not a completed efficacy or complete-cost pair.']
     lines+=['',result['uncertainty'],'','The token-breakdown and paired-token-deltas files contain cached input, uncached input, output, reasoning, and separate summary-model rows. Missing usage remains unknown with its reservation retained.']
     (dest/'workflow.md').write_text('\n'.join(lines)+'\n')
     usage_report(protocol);band_report(protocol)
