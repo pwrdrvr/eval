@@ -94,6 +94,13 @@ budget stops keep their full uncertain reservations. This offline financial
 reconciliation does not change a grade or original driver result. The fresh
 batch finished and the review gate is paused again.
 
+Future-only driverbeec8a636f1be17e76051718422393739f3df98e fixes recursive
+directory export, preserving source and safe relative links while omitting Git
+internals and rejecting unsafe paths. Its31 contract tests/lint passed. A native
+Cython-image check reproduced the nested Git directory and verified exact
+exported source bytes with zero model-turn requests. The four0886647 model runs
+and their failed export statuses were not modified or repeated.
+
 The disclosed secondary three-task rollup has Sol3/3 both modes, ON recorded
 cost1.65% lower (task bootstrap interval includes zero). AstraOFF3/3 andON2/3
 completion-gated, with one evaluator interruption; two unaffected model pairs

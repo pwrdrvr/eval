@@ -42,5 +42,14 @@
     "source_commit": "0886647b24aaf612afdb67bf71c10f008f173707",
     "preflight_result_sha256": "5fcbe5ff4335db653c798ea8e72bd3724cfa039842604d8c6f11cb43cc63146c",
     "source_changes": "Lightweight budget reads, labeled IPC deadline and nonfinal usage snapshot retention; historical driver pins unchanged"
+  },
+  "eval_driver_recursive_export_fix_future_only": {
+    "source_commit": "beec8a636f1be17e76051718422393739f3df98e",
+    "preflight_only": true,
+    "actual_turn_start_requests": 0,
+    "export_proof_sha256": "27e0c16744e5181cca411100a2a09d7d20ef9fb1a41de46435f8648f27344e29",
+    "four_trial_driver_pin_unchanged": "0886647b24aaf612afdb67bf71c10f008f173707",
+    "source_bytes_and_safe_link_preserved": true,
+    "git_internals_omitted": true
   }
 }
