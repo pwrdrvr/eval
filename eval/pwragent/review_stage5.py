@@ -17,8 +17,13 @@ def build():
     flow = json.loads((LOCAL/('report-'+workflow)/'workflow.json').read_text())
     overhead = json.loads((LOCAL/'stage5-engineering-overhead.json').read_text())
     ledger = json.loads((LOCAL/'stage5-ledger.json').read_text())
+    pause_path=LOCAL/'PAUSED_FOR_REVIEW.json'
+    pause=json.loads(pause_path.read_text()) if pause_path.exists() else {}
+    finished=(workflow==final_workflow and len([r for r in records if r['cohort_id']==final_workflow and 'grade' in r])==2
+              and pause.get('completed_cohort')==final_workflow and not pause.get('authorized_protocol_sha256'))
+    status='The authorized stage is complete and further evaluation is paused for review.' if finished else 'The stage remains in progress until the final twelve-feature pair is complete and the review gate is restored.'
     lines = ['# Token Miser evaluation: new $500 stage', '',
-             'Generated '+datetime.datetime.now(datetime.timezone.utc).isoformat()+'. The stage remains in progress until the final twelve-feature pair is complete and the review gate is restored.', '',
+             'Generated '+datetime.datetime.now(datetime.timezone.utc).isoformat()+'. '+status, '',
              'All dollars below are standard-card API-equivalent estimates of Codex Pro usage, not API-key charges or invoices. The account-wide usage of the user’s other Codex work is excluded.', '',
              '## Results', '',
              '| Model and workload | OFF score | ON score | OFF cost | ON cost | Scope |',
@@ -42,6 +47,9 @@ def build():
     paired = flow.get('paired', {})
     if 'cost_change_fraction' in paired:
         lines += ['', f"Sol workflow: observed ON-minus-OFF feature score change {paired['score_delta_on_minus_off']:+.1%}; estimated cost change {paired['cost_change_fraction']:+.2%}. This describes one pair only."]
+    off_cost=arms.get('off',{}).get('reported_cost_usd')
+    if off_cost is not None:
+        lines += ['', f"This Sol OFF baseline is {'inside' if 3<=off_cost<=15 else 'outside'} the requested $3–15 range (${off_cost:.6f}). Selection is not expanded further after this pair."]
     for row in records:
         if row['cohort_id'] == workflow and row.get('grade',{}).get('details'):
             detail=row['grade']['details'];label='ON' if row['cell']['token_miser'] else 'OFF'
@@ -77,7 +85,7 @@ def build():
               '## Validity and limitations', '',
               '- Exact requested model IDs; high reasoning, default service and fast mode off. Account/read receipts verify ChatGPT Pro, and client thread/turn receipts clear the tier override. They do not prove an upstream invoice tier. No API-key fallback was admitted.',
               '- Real PwrAgent Electron and its pinned managed App Server run inside each native arm64 Linux task container. The driver uses lightweight budget polls, named IPC deadlines, durable usage snapshots and recursive source export. No cumulative-token cap is configured.',
-              '- Unchanged hidden component verifiers run after the model stops, in pristine containers. Every selected verifier rejected the baseline and accepted its reference solution before trial admission. The six-component export/grading path also passed an offline oracle check. Agent code is never repaired by the evaluator.',
+              '- Unchanged hidden component verifiers run after the model stops, in pristine containers. Every selected verifier rejected the baseline and accepted its reference solution before trial admission. Both composed export/grading paths passed offline reference-solution checks. Agent code is never repaired by the evaluator.',
               '- Production PwrAgent includes the protected AGENTS.md/CLAUDE.md/SKILL.md instruction fixes. This is not a standalone synthetic-compression wrapper.',
               '- Workflow order is OFF then ON. Remote provider prompt caches are not reset by fresh containers. Generation randomness and order effects remain; no population confidence interval is justified for one workflow pair.',
               '- Native arm64 execution, task selection and the composed workflow differ from published benchmark configurations. Published costs informed selection, not the ON/OFF causal baseline.',
@@ -90,11 +98,14 @@ def build():
         ('Larger Sol token CSV',LOCAL/('report-'+workflow)/'token-breakdown.csv'),
         ('Astra and cheap Sol paired token deltas',LOCAL/('report-'+fixed)/'paired-token-deltas.csv'),
         ('Larger Sol paired token deltas',LOCAL/('report-'+workflow)/'paired-token-deltas.csv'),
+        ('Separate six-feature workflow result',LOCAL/('report-'+small_workflow)/'workflow.json'),
+        ('Every provider dispatch and usage reconciliation',LOCAL/'stage5-protocol-usage-audit.json'),
+        ('Explicit missing usage',LOCAL/('report-'+fixed)/'missing-usage.json'),
         ('Budget ledger',LOCAL/'stage5-ledger.json'),
         ('Scoped engineering receipt',LOCAL/'stage5-engineering-receipt.json'),
         ('Scoped engineering helper receipt',LOCAL/'stage5-engineering-helper-receipt.json')]:
         lines.append(f'- [{title}]({path})')
-    lines+=['', 'Source: [draft harness PR](https://github.com/frontier-harness-eval/eval/pull/26), [headless driver PR](https://github.com/pwrdrvr/PwrAgent/pull/2707). No merge/release or public agent-patch publication.', '']
+    lines+=['', 'Source: [draft harness PR](https://github.com/frontier-harness-eval/eval/pull/26), [headless driver PR](https://github.com/pwrdrvr/PwrAgent/pull/2707). [Official pricing](https://developers.openai.com/api/docs/pricing) was frozen in the dated repository price card. No merge/release or public agent-patch publication.', '']
     output=LOCAL/'REVIEW-stage5.md';output.write_text('\n'.join(lines))
     return output
 
