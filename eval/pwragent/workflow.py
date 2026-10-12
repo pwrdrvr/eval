@@ -90,6 +90,8 @@ subprocess.run(['git','-C',str(root),'-c','user.name=Eval','-c','user.email=eval
                   '-C', '/app', 'rev-parse', 'HEAD').stdout.strip()
     record = dict(image=image, image_id=image_id, base_commit=base,
                   component_ids=names, platform='linux/arm64',
+                  component_image_ids={c['id']:c['image']['image_id'] for c in components},
+                  builder_source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                   dockerfile_sha256=hashlib.sha256((context/'Dockerfile').read_bytes()).hexdigest(),
                   init_root_sha256=hashlib.sha256(init.encode()).hexdigest())
     (context/'build.json').write_text(json.dumps(record, indent=2)+'\n')
